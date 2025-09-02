@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Script id="rb-config" strategy="beforeInteractive">
-          {`window.RB_WAITLIST_ENDPOINT="https://script.google.com/macros/s/AKfycbw7CbAIzQZZSLP37YEmRQA5ySu-Z-J9Obizt8HEDWvP0gbN_FHPyqe1wrW8ejihVy6lQg/exec";
+          {`window.RB_WAITLIST_ENDPOINT="https://script.google.com/macros/s/AKfycbyGuYedmT5BLI9DXsb1DbqFTj5b86I7URHR1O6XeMuyd1fWAOxkID-lbqePiGNNKN0axg/exec";
             window.RB_WAITLIST_SECRET="";`}
         </Script>
         {children}
