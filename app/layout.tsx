@@ -1,4 +1,4 @@
-// app/layout.tsx
+Layout page code:   // app/layout.tsx
 import "./globals.css";
 import Script from "next/script";
 import type { Metadata } from "next";
