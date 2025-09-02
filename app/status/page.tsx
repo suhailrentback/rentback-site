@@ -1,9 +1,5 @@
 import React, { useEffect, useState } from "react";
 
-// Simple status page preview for https://status.rentback.app
-// Shows SBP Regulatory Sandbox milestones + updates
-// Follows system theme (no manual toggle)
-
 const PHASES = [
   { key: "prep",    title: "Preparation",           desc: "Drafting materials and partners.",                          status: "complete",    date: "2025-08-15" },
   { key: "submit",  title: "Application Submitted", desc: "Submitted to SBP Regulatory Sandbox.",                      status: "in_progress", date: "2025-09-01" },
@@ -31,7 +27,7 @@ function Badge({ status }: { status: PhaseStatus }) {
   return <span className={`text-xs px-2 py-1 rounded-full ${cls}`}>{label}</span>;
 }
 
-export default function StatusPreview() {
+export default function StatusPage() {
   // Follow system theme automatically
   const [dark, setDark] = useState(false);
   useEffect(() => {
@@ -43,7 +39,6 @@ export default function StatusPreview() {
       return () => mq.removeEventListener("change", apply);
     } catch {}
   }, []);
-
   useEffect(() => {
     try {
       const root = document.documentElement;
@@ -66,7 +61,6 @@ export default function StatusPreview() {
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Last updated: {lastUpdated}</p>
         </header>
 
-        {/* Current status card */}
         <div className="rounded-2xl p-6 ring-1 ring-black/5 dark:ring-white/10 mb-10">
           <div className="flex items-center gap-3">
             <div className="size-2.5 rounded-full bg-amber-500 animate-pulse" />
@@ -77,7 +71,6 @@ export default function StatusPreview() {
           </p>
         </div>
 
-        {/* Milestone timeline */}
         <h2 className="text-lg font-semibold mb-4">Milestones</h2>
         <ol className="space-y-4 mb-10">
           {PHASES.map((p) => (
@@ -87,14 +80,11 @@ export default function StatusPreview() {
                 <Badge status={p.status as PhaseStatus} />
               </div>
               <p className="text-sm mt-1 text-gray-700 dark:text-gray-300">{p.desc}</p>
-              {p.date && (
-                <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">Date: {p.date}</p>
-              )}
+              {p.date && <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">Date: {p.date}</p>}
             </li>
           ))}
         </ol>
 
-        {/* Transparency log */}
         <h2 className="text-lg font-semibold mb-4">Transparency log</h2>
         <div className="space-y-4">
           {UPDATES.map((u) => (
@@ -106,7 +96,6 @@ export default function StatusPreview() {
           ))}
         </div>
 
-        {/* Contact */}
         <div className="mt-12 text-sm text-gray-700 dark:text-gray-300">
           Questions? <a className="underline" href="mailto:help@rentback.app">help@rentback.app</a>
         </div>
@@ -114,4 +103,3 @@ export default function StatusPreview() {
     </main>
   );
 }
-
