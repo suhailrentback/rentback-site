@@ -1175,15 +1175,9 @@ export default function RentBackLanding() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-              <a
-                href="https://status.rentback.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track("status_view")}
-                className="underline"
-              >
-                {t.viewStatus}
-              </a>
+              <a href="/status" onClick={() => track("status_view")} className="underline">
+  {t.viewStatus}
+</a>
               <span> · </span>
               <a href="mailto:help@rentback.app" className="underline">
                 help@rentback.app
