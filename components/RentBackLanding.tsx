@@ -15,11 +15,9 @@ export default function RentBackLanding() {
   // Optional globals injected via a <script> tag
   // window.RB_WAITLIST_ENDPOINT = 'https://script.google.com/macros/s/XXXXX/exec'
   // window.RB_WAITLIST_SECRET = 'your-shared-secret'
-  const FALLBACK_WAITLIST_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw7CbAIzQZZSLP37YEmRQA5ySu-Z-J9Obizt8HEDWvP0gbN_FHPyqe1wrW8ejihVy6lQg/exec' as const;
-  const _WAITLIST_ENDPOINT = (typeof window !== 'undefined' && (window as any).RB_WAITLIST_ENDPOINT) || FALLBACK_WAITLIST_ENDPOINT;
+  const FALLBACK_WAITLIST_ENDPOINT ='https://script.google.com/macros/s/AKfycbw7CbAIzQZZSLP37YEmRQA5ySu-Z-J9Obizt8HEDWvP0gbN_FHPyqe1wrW8ejihVy6lQg/exec' as const;
   const _WAITLIST_SECRET = (typeof window !== 'undefined' && (window as any).RB_WAITLIST_SECRET) || '';
-
-  // Expose the resolved endpoint back to window for quick manual checks
+ // Expose the resolved endpoint back to window for quick manual checks
   useEffect(() => { try { (window as any).RB_WAITLIST_ENDPOINT = _WAITLIST_ENDPOINT; } catch {} }, []);
 
   const [lang, setLang] = useState<'en' | 'ur'>('en');
