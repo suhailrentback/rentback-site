@@ -1,17 +1,24 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+// This middleware runs before routing. If the request host is status.rentback.app,
+// we always serve the /status page (but we let _next assets pass through).
 export function middleware(req: NextRequest) {
-  const host = req.headers.get("host") || "";
-  if (host.startsWith("status.")) {
+  const hostname = req.nextUrl.hostname; // e.g. "status.rentback.app", "www.rentback.app"
+
+  if (hostname === "status.rentback.app") {
     const url = req.nextUrl.clone();
-    if (!url.pathname.startsWith("/status")) url.pathname = "/status";
+
+    // Always rewrite to the status page on this subdomain
+    url.pathname = "/status";
+
     return NextResponse.rewrite(url);
   }
+
   return NextResponse.next();
 }
 
+// Run for everything except Next.js static/image assets and favicon
 export const config = {
-  matcher: ["/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|assets/).*)"],
 };
-
