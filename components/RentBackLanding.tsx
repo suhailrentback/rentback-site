@@ -2,12 +2,13 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Languages, Moon, Sun, Shield, Gift, Zap } from "lucide-react";
+import { Languages, Shield, Gift, Zap } from "lucide-react";
 
 /**
- * RentBack Landing Page — stable & wired to Google Sheets (Apps Script)
- * - Dark/Light mode + EN/UR toggle
- * - Header cleaned (no links/toggles), footer has Privacy/Terms/Rewards/Founder + Language + Theme + Cookies
+ * RentBack Landing Page — follows system theme (no toggle)
+ * - Theme follows device (prefers-color-scheme) automatically
+ * - EN/UR language toggle in footer
+ * - Header clean; footer has Privacy/Terms/Rewards/Founder/Cookies + Language
  * - Consent-based analytics (Plausible)
  * - Phone normalizer (PK) + inline validation
  * - Waitlist form posts to window.RB_WAITLIST_ENDPOINT (optional SECRET)
@@ -17,7 +18,7 @@ import { Languages, Moon, Sun, Shield, Gift, Zap } from "lucide-react";
 // window.RB_WAITLIST_ENDPOINT = 'https://script.google.com/macros/s/XXXXX/exec'
 // window.RB_WAITLIST_SECRET = 'your-shared-secret'
 
-// UPDATED: Fallback endpoint (used if runtime script not present)
+// Fallback endpoint (used if runtime script not present)
 const FALLBACK_WAITLIST_ENDPOINT =
   "https://script.google.com/macros/s/AKfycbyGuYedmT5BLI9DXsb1DbqFTj5b86I7URHR1O6XeMuyd1fWAOxkID-lbqePiGNNKN0axg/exec" as const;
 
@@ -37,28 +38,20 @@ export default function RentBackLanding() {
   }, [_WAITLIST_ENDPOINT]);
 
   const [lang, setLang] = useState<"en" | "ur">("en");
-  const [darkMode, setDarkMode] = useState(false);
 
-  // Ensure dark mode works regardless of where the `.dark` class is expected
+  // Theme: follow OS setting (no manual toggle, no persistence)
+  const [darkMode, setDarkMode] = useState(false);
   useEffect(() => {
     try {
-      const saved =
-        typeof window !== "undefined"
-          ? localStorage.getItem("rb-theme")
-          : null;
-      const initial = saved ? saved === "dark" : false; // manual toggle only
-      setDarkMode(initial);
-      if (typeof document !== "undefined") {
-        const root = document.documentElement;
-        const body = document.body;
-        root.classList.toggle("dark", initial);
-        if (body) body.classList.toggle("dark", initial);
-        (root as HTMLElement).style.colorScheme = initial ? "dark" : "light";
-      }
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const apply = () => setDarkMode(mq.matches);
+      apply(); // initial
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
     } catch {}
   }, []);
 
-  // Reflect darkMode to <html> & <body> and persist
+  // Reflect darkMode to <html> & <body>
   useEffect(() => {
     try {
       if (typeof document !== "undefined") {
@@ -67,9 +60,6 @@ export default function RentBackLanding() {
         root.classList.toggle("dark", darkMode);
         if (body) body.classList.toggle("dark", darkMode);
         (root as HTMLElement).style.colorScheme = darkMode ? "dark" : "light";
-      }
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem("rb-theme", darkMode ? "dark" : "light");
       }
     } catch {}
   }, [darkMode]);
@@ -453,7 +443,7 @@ export default function RentBackLanding() {
 
   const t = copy[lang];
 
-  // SEO/OG/Twitter tags + favicons
+  // SEO/OG/Twitter + favicons, and meta theme-color tied to darkMode
   const SEO: React.FC = () => {
     useEffect(() => {
       const isUr = lang === "ur";
@@ -498,29 +488,23 @@ export default function RentBackLanding() {
       };
 
       const setMetaName = (name: string, content: string, id?: string) => {
-        const el = upsert(
-          id ? `meta#${id}` : `meta[name="${name}"]`,
-          () => {
-            const m = document.createElement("meta");
-            if (id) m.id = id;
-            else m.setAttribute("name", name);
-            return m;
-          }
-        );
+        const el = upsert(id ? `meta#${id}` : `meta[name="${name}"]`, () => {
+          const m = document.createElement("meta");
+          if (id) m.id = id;
+          else m.setAttribute("name", name);
+          return m;
+        });
         el.setAttribute("content", content);
         if (!id) el.setAttribute("name", name);
       };
 
       const setMetaProp = (prop: string, content: string, id?: string) => {
-        const el = upsert(
-          id ? `meta#${id}` : `meta[property="${prop}"]`,
-          () => {
-            const m = document.createElement("meta");
-            if (id) m.id = id;
-            else m.setAttribute("property", prop);
-            return m;
-          }
-        );
+        const el = upsert(id ? `meta#${id}` : `meta[property="${prop}"]`, () => {
+          const m = document.createElement("meta");
+          if (id) m.id = id;
+          else m.setAttribute("property", prop);
+          return m;
+        });
         el.setAttribute("content", content);
         if (!id) el.setAttribute("property", prop);
       };
@@ -576,7 +560,7 @@ export default function RentBackLanding() {
       setLink("apple-touch-icon", "/apple-touch-icon.png", "rb-apple");
       setLink("mask-icon", "/safari-pinned-tab.svg", "rb-mask", "image/svg+xml");
 
-      // Theme color (match light/dark)
+      // Theme color (match system)
       setMetaName("theme-color", darkMode ? "#0a0a0a" : "#ffffff", "rb-theme");
 
       // JSON-LD (Organization + WebSite)
@@ -1181,7 +1165,7 @@ export default function RentBackLanding() {
           </section>
         </main>
 
-        {/* Footer (contains: status, email, privacy/terms/rewards, founder, cookies, language, theme) */}
+        {/* Footer */}
         <footer className="border-t border-black/5 dark:border-white/10 py-8">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -1264,7 +1248,7 @@ export default function RentBackLanding() {
                 {t.cookieLabel}
               </button>
 
-              {/* Language toggle (moved to footer) */}
+              {/* Language toggle (kept) */}
               <span> · </span>
               <button
                 type="button"
@@ -1278,23 +1262,6 @@ export default function RentBackLanding() {
               >
                 <Languages className="size-4" />
                 <span className="font-medium">{t.languageLabel}</span>
-              </button>
-
-              {/* Theme toggle (moved to footer) */}
-              <span> · </span>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = !darkMode;
-                  setDarkMode(next);
-                  track("theme_toggle", { to: next ? "dark" : "light" });
-                }}
-                className="inline-flex items-center gap-2 underline"
-                aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-                aria-pressed={darkMode}
-              >
-                {darkMode ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                <span className="font-medium">{darkMode ? "Light" : "Dark"}</span>
               </button>
             </div>
           </div>
