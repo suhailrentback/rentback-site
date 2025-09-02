@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Languages, Shield, Gift, Zap } from "lucide-react";
@@ -407,7 +406,6 @@ export default function RentBackLanding() {
         consent:
           "میں رضامند ہوں کہ وقتاً فوقتاً اپ ڈیٹس موصول کروں — اگر نمبر دیا ہے تو واٹس ایپ پر بھی۔",
         submit: "مجھے اطلاع دیں",
-        languageLabel: "اردو",
         successTitle: "آپ شامل ہو چکے ہیں!",
         successBody:
           "ہم جیسے جیسے شہروں میں لانچ کریں گے، آپ کو ایپ کا ابتدائی رسائی ای میل کریں گے۔",
@@ -436,6 +434,7 @@ export default function RentBackLanding() {
           "کمزوری رپورٹ کریں: help@rentback.app.",
           "اسٹیٹس پیج اور شفاف انسیڈنٹ رپورٹنگ۔",
         ],
+        languageLabel: "اردو",
       },
     }),
     [lang]
@@ -555,8 +554,8 @@ export default function RentBackLanding() {
 
       // Favicons
       setLink("icon", "/favicon.svg", "rb-ico-svg", "image/svg+xml");
-      setLink("icon", "/favicon-32.png", "rb-ico-32", "image/png", "32x32");
-      setLink("icon", "/favicon-16.png", "rb-ico-16", "image/png", "16x16");
+      setLink("icon", "/favicon-32.png", "rb-ico-32", "32x32", "image/png");
+      setLink("icon", "/favicon-16.png", "rb-ico-16", "16x16", "image/png");
       setLink("apple-touch-icon", "/apple-touch-icon.png", "rb-apple");
       setLink("mask-icon", "/safari-pinned-tab.svg", "rb-mask", "image/svg+xml");
 
