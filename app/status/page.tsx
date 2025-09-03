@@ -1,103 +1,105 @@
-import React, { useEffect, useState } from "react";
+import Link from "next/link";
 
-const PHASES = [
-  { key: "prep",    title: "Preparation",           desc: "Drafting materials and partners.",                          status: "complete",    date: "2025-08-15" },
-  { key: "submit",  title: "Application Submitted", desc: "Submitted to SBP Regulatory Sandbox.",                      status: "in_progress", date: "2025-09-01" },
-  { key: "review",  title: "Under Review",          desc: "Awaiting SBP feedback.",                                     status: "pending" },
-  { key: "sandbox", title: "Sandbox Entry",         desc: "Testing with limited users under SBP oversight.",            status: "pending" },
-  { key: "pilot",   title: "Pilot Expansion",       desc: "Broader pilot and operational hardening.",                   status: "pending" },
-  { key: "graduate",title: "Graduation",            desc: "Graduation from sandbox and go-to-market.",                  status: "pending" },
+export const metadata = {
+  title: "Status — RentBack",
+  description: "Regulatory journey and product readiness updates.",
+};
+
+type Step = {
+  date: string;
+  title: string;
+  detail: string;
+  status: "done" | "active" | "upcoming";
+};
+
+const timeline: Step[] = [
+  {
+    date: "2025-08-15",
+    title: "Initial application drafted",
+    detail: "Prepared documentation and compliance notes for the SBP Regulatory Sandbox.",
+    status: "done",
+  },
+  {
+    date: "2025-09-01",
+    title: "Submitted to SBP Regulatory Sandbox",
+    detail: "Submitted core proposal and supporting materials.",
+    status: "active",
+  },
+  {
+    date: "TBD",
+    title: "Sandbox acceptance",
+    detail: "Awaiting review outcome and next steps from SBP.",
+    status: "upcoming",
+  },
+  {
+    date: "TBD",
+    title: "Limited pilot (sandbox)",
+    detail: "Closed-beta with selected users and monitored volumes.",
+    status: "upcoming",
+  },
+  {
+    date: "TBD",
+    title: "General availability",
+    detail: "Gradual rollout by city across Pakistan.",
+    status: "upcoming",
+  },
 ];
 
-const UPDATES: { date: string; title: string; body: string }[] = [
-  { date: "2025-09-01", title: "Application submitted", body: "We sent our sandbox application to SBP. We’ll post updates as we hear back." },
-  { date: "2025-08-28", title: "Partner docs finalized", body: "Completed docs with licensed payment partners and refined compliance checklist." },
-];
-
-type PhaseStatus = "complete" | "in_progress" | "pending";
-
-function Badge({ status }: { status: PhaseStatus }) {
-  const label = status === "complete" ? "Complete" : status === "in_progress" ? "In progress" : "Pending";
-  const cls =
-    status === "complete"
-      ? "bg-emerald-600 text-white"
-      : status === "in_progress"
-      ? "bg-amber-500 text-white"
-      : "bg-gray-300 text-gray-800 dark:bg-white/10 dark:text-gray-100";
-  return <span className={`text-xs px-2 py-1 rounded-full ${cls}`}>{label}</span>;
+function Dot({ status }: { status: Step["status"] }) {
+  const base = "inline-block size-2 rounded-full";
+  const color =
+    status === "done"
+      ? "bg-emerald-500"
+      : status === "active"
+      ? "bg-amber-500"
+      : "bg-gray-400 dark:bg-gray-600";
+  return <span className={`${base} ${color}`} aria-hidden />;
 }
 
 export default function StatusPage() {
-  // Follow system theme automatically
-  const [dark, setDark] = useState(false);
-  useEffect(() => {
-    try {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const apply = () => setDark(mq.matches);
-      apply();
-      mq.addEventListener("change", apply);
-      return () => mq.removeEventListener("change", apply);
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try {
-      const root = document.documentElement;
-      root.classList.toggle("dark", dark);
-      (root as HTMLElement).style.colorScheme = dark ? "dark" : "light";
-      document.title = "RentBack — Regulatory Status";
-    } catch {}
-  }, [dark]);
-
-  const lastUpdated = UPDATES[0]?.date ?? "—";
+  const lastUpdated = new Date().toLocaleDateString("en-PK", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
-    <main className="min-h-screen bg-white text-gray-900 dark:bg-neutral-950 dark:text-gray-100">
-      <section className="px-6 py-12 sm:py-16 mx-auto max-w-4xl">
-        <header className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold">Regulatory Status — State Bank of Pakistan</h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Transparent updates on our application to the SBP Regulatory Sandbox.
+    <main className="min-h-[70vh]">
+      <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
+        <header className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-semibold">RentBack Status</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Regulatory journey & product readiness. Last updated: {lastUpdated}
           </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Last updated: {lastUpdated}</p>
         </header>
 
-        <div className="rounded-2xl p-6 ring-1 ring-black/5 dark:ring-white/10 mb-10">
-          <div className="flex items-center gap-3">
-            <div className="size-2.5 rounded-full bg-amber-500 animate-pulse" />
-            <div className="font-semibold">Waiting approval</div>
-          </div>
-          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
-            Our sandbox application is with SBP. We’ll announce the next milestone as soon as we have it.
-          </p>
-        </div>
-
-        <h2 className="text-lg font-semibold mb-4">Milestones</h2>
-        <ol className="space-y-4 mb-10">
-          {PHASES.map((p) => (
-            <li key={p.key} className="rounded-2xl p-5 ring-1 ring-black/5 dark:ring-white/10">
-              <div className="flex items-center justify-between gap-3">
-                <div className="font-medium">{p.title}</div>
-                <Badge status={p.status as PhaseStatus} />
+        <div className="space-y-6">
+          {timeline.map((s, i) => (
+            <div key={i} className="flex gap-4">
+              <div className="flex flex-col items-center">
+                <div className="mt-1">
+                  <Dot status={s.status} />
+                </div>
+                {i < timeline.length - 1 && (
+                  <div className="flex-1 w-px bg-gray-200 dark:bg-white/10 my-2" />
+                )}
               </div>
-              <p className="text-sm mt-1 text-gray-700 dark:text-gray-300">{p.desc}</p>
-              {p.date && <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">Date: {p.date}</p>}
-            </li>
-          ))}
-        </ol>
-
-        <h2 className="text-lg font-semibold mb-4">Transparency log</h2>
-        <div className="space-y-4">
-          {UPDATES.map((u) => (
-            <article key={u.date} className="rounded-2xl p-5 ring-1 ring-black/5 dark:ring-white/10">
-              <div className="text-sm text-gray-500 dark:text-gray-400">{u.date}</div>
-              <h3 className="font-medium mt-1">{u.title}</h3>
-              <p className="text-sm mt-1 text-gray-700 dark:text-gray-300">{u.body}</p>
-            </article>
+              <div className="flex-1 rounded-xl p-4 ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-white/5">
+                <div className="text-xs text-gray-600 dark:text-gray-400">{s.date}</div>
+                <div className="font-medium mt-0.5">{s.title}</div>
+                <div className="text-sm text-gray-700 dark:text-gray-300 mt-1">{s.detail}</div>
+              </div>
+            </div>
           ))}
         </div>
 
-        <div className="mt-12 text-sm text-gray-700 dark:text-gray-300">
-          Questions? <a className="underline" href="mailto:help@rentback.app">help@rentback.app</a>
+        <div className="mt-10">
+          <Link
+            href="/"
+            className="inline-flex items-center rounded-xl px-4 py-2 text-sm ring-1 ring-black/10 dark:ring-white/10 hover:bg-black/5 dark:hover:bg-white/5"
+          >
+            ← Back to home
+          </Link>
         </div>
       </section>
     </main>
