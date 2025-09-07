@@ -19,7 +19,7 @@ import { Languages, Shield, Gift, Zap } from "lucide-react";
 
 // Fallback endpoint (used if runtime script not present)
 const FALLBACK_WAITLIST_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbyGuYedmT5BLI9DXsb1DbqFTj5b86I7URHR1O6XeMuyd1fWAOxkID-lbqePiGNNKN0axg/exec" as const;
+  "https://script.google.com/macros/s/AKfycbwCqHgI_5wkWTTorP_803gULbkVDuhLLs_lQnKN9k5dl1NPJx7XKEHj8IOcIyIENZgm/exec" as const;
 
 export default function RentBackLanding() {
   const _WAITLIST_ENDPOINT =
