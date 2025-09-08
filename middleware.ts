@@ -5,7 +5,7 @@ export function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const host = req.headers.get("host") || "";
 
-  // app.<domain> → only send "/" to /app
+  // app.<domain> → only "/" goes to /app
   if (host.startsWith("app.")) {
     if (url.pathname === "/") {
       url.pathname = "/app";
@@ -14,9 +14,8 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // status.<domain> → everything (except assets) goes to /status
+  // status.<domain> → everything except assets goes to /status
   if (host.startsWith("status.")) {
-    // allow assets to pass
     if (
       url.pathname.startsWith("/_next/") ||
       url.pathname.startsWith("/favicon") ||
@@ -32,6 +31,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // run on everything except static assets & api routes
   matcher: ["/((?!_next/static|_next/image|favicon.ico|api).*)"],
 };
