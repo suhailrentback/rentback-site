@@ -1,18 +1,16 @@
-'use client';
+import React, { useMemo, useState, useEffect } from "react";
 
-import React, { useEffect, useMemo, useState } from "react";
-
-// ==========================
-// RentBack — Unified App Prototype (LIVE)
-// - Bottom nav (Home, Pay, Rewards, Support, Profile)
-// - Right Drawer: Status, Security & Privacy, Rewards, About, Founder, Privacy, Terms, Language, Role switch
-// - Simple EN/UR i18n with RTL handling
-// - Demo Payments with Receipt modal + CSV + localStorage
+// RentBack — Unified App Prototype (single Preview)
+// - Fixed bottom nav (Home, Pay, Rewards, Support, Profile)
+// - Right drawer with Status, Security & Privacy, Rewards, About, Founder, Privacy, Terms
+// - Role switch (Tenant/Landlord)
+// - KYC banner (Home → Profile only)
 // - Animated gradient card (ends with 0007)
-// - Rewards grid (PK starter catalog)
-// ==========================
+// - Rewards (PK starter catalog) with Redemption modal + list + receipt + fulfill/cancel
+// - Pay tab Demo Mode with Receipt modal, Refund (demo), CSV export, local persistence
+// - Unified Apps Script logging (payments + redemptions) via window.RB_PAYMENTS_ENDPOINT
 
-// ---- Brand palette
+// Brand palette (aligned to Tailwind Emerald/Teal used on landing)
 const BRAND = {
   primary: "#059669", // emerald-600
   primarySoft: "#10b981", // emerald-500
@@ -24,175 +22,56 @@ const BRAND = {
   ring: "rgba(5,150,105,0.20)",
 } as const;
 
-// ---- i18n strings (EN + UR)
-const STRINGS = {
-  en: {
-    appName: "RentBack",
-    homeTitleTenant: "Your rent, organized",
-    homeSubTenant: "Track dues, pay faster, and earn rewards.",
-    homeTitleLandlord: "Your rentals, at a glance",
-    homeSubLandlord: "See incoming rents and tenant activity.",
+// Types
+ type Tab =
+  | "home"
+  | "pay"
+  | "rewards"
+  | "support"
+  | "profile"
+  | "status"
+  | "security"
+  | "about"
+  | "founder"
+  | "privacy"
+  | "terms";
 
-    kycTitle: "Verify your identity",
-    kycSub: "Finish KYC to unlock higher limits and faster payouts.",
-    kycCta: "Continue KYC",
+type Role = "tenant" | "landlord";
 
-    pendingBalance: "Pending Balance",
-    upcomingRent: "Upcoming Rent",
-    newRewards: "New Rewards",
-    activeListings: "Active Listings",
-    expectedMonth: "Expected This Month",
-    followUps: "Follow-ups",
+type KycState = "none" | "in-progress" | "verified";
 
-    payTitle: "Pay rent",
-    paySub: "Demo Mode — no real charges",
-    amountPh: "Amount (PKR)",
-    landlordPh: "Landlord / Property",
-    bank: "Bank Transfer",
-    card: "Card",
-    wallet: "Wallet",
-    createDemo: "Create Payment (Demo)",
-    downloadCsv: "Download CSV",
-    recent: "Recent",
-    markSent: "Mark as Sent",
-    viewReceipt: "View Receipt",
-    refunded: "Refunded",
-    refundDemo: "Refund (Demo)",
+type PaymentStatus = "initiated" | "sent" | "succeeded" | "refunded";
 
-    rewardsTitle: "Rewards",
-    rewardsSub: "Pakistan‑focused perks",
-    redeem: "Redeem",
+type Payment = {
+  id: string;
+  amount: number;
+  landlord: string;
+  method: "Bank Transfer" | "Card" | "Wallet";
+  status: PaymentStatus;
+  ts: number;
+  ref: string;
+};
 
-    supportTitle: "Support",
-    supportSub: "We usually reply within 24h",
-    emailSupport: "Email support",
+type Utm = { source: string; medium: string; campaign: string };
 
-    profile: "Profile",
-    kyc: "KYC",
-    startKyc: "Start KYC",
-    completeKyc: "Complete KYC",
-    kycDone: "KYC complete. Thanks!",
+// Redemption types
+ type RedemptionStatus = "requested" | "fulfilled" | "canceled";
+ type Redemption = {
+  id: string;
+  ref: string;
+  rewardId: string;
+  brand: string;
+  title: string;
+  denomination: number; // PKR
+  points: number;       // computed estimate
+  status: RedemptionStatus;
+  ts: number;
+};
 
-    statusTitle: "Regulatory Status",
-    statusSub: "SBP Sandbox — preparation & updates",
+// Utilities
+const formatPKR = (n: number) => new Intl.NumberFormat("en-PK", { style: "currency", currency: "PKR", maximumFractionDigits: 0 }).format(n);
 
-    secTitle: "Security & Privacy",
-    secSub: "How we protect your data",
-
-    aboutTitle: "About RentBack",
-    aboutSub: "Turning rent into rewards",
-
-    founder: "Founder",
-
-    navHome: "Home",
-    navPay: "Pay",
-    navRewards: "Rewards",
-    navSupport: "Support",
-    navProfile: "Profile",
-
-    drawerMenu: "Menu",
-    drawerExplore: "Explore",
-    drawerStatus: "Status",
-    drawerSecurity: "Security & Privacy",
-    drawerAbout: "About",
-    drawerFounder: "Founder",
-    drawerPrivacy: "Privacy Policy",
-    drawerTerms: "Terms of Service",
-    drawerRole: "Role",
-    drawerLang: "Language",
-
-    tenant: "Tenant",
-    landlord: "Landlord",
-  },
-  ur: {
-    appName: "رینٹ بیک",
-    homeTitleTenant: "آپ کا کرایہ منظم",
-    homeSubTenant: "واجبات ٹریک کریں، تیزی سے ادا کریں اور انعامات حاصل کریں۔",
-    homeTitleLandlord: "آپ کے کرائے، ایک نظر میں",
-    homeSubLandlord: "آنے والی ادائیگیاں اور کرایہ دار سرگرمی دیکھیں۔",
-
-    kycTitle: "اپنی شناخت کی تصدیق کریں",
-    kycSub: "زیادہ حدود اور تیز ادائیگیوں کے لیے KYC مکمل کریں۔",
-    kycCta: "KYC جاری رکھیں",
-
-    pendingBalance: "بقایا رقم",
-    upcomingRent: "آئندہ کرایہ",
-    newRewards: "نئے انعامات",
-    activeListings: "فعال لسٹنگز",
-    expectedMonth: "اس ماہ متوقع",
-    followUps: "فالو اپس",
-
-    payTitle: "کرایہ ادا کریں",
-    paySub: "ڈیمو موڈ — حقیقی چارجز نہیں",
-    amountPh: "رقم (PKR)",
-    landlordPh: "مالک مکان / پراپرٹی",
-    bank: "بینک ٹرانسفر",
-    card: "کارڈ",
-    wallet: "والیٹ",
-    createDemo: "ڈیمو ادائیگی بنائیں",
-    downloadCsv: "CSV ڈاؤن لوڈ کریں",
-    recent: "حالیہ",
-    markSent: "بھیج دیا نشان لگائیں",
-    viewReceipt: "رسید دیکھیں",
-    refunded: "واپس کر دی گئی",
-    refundDemo: "ریفنڈ (ڈیمو)",
-
-    rewardsTitle: "انعامات",
-    rewardsSub: "پاکستان کے مطابق سہولیات",
-    redeem: "ریڈیم",
-
-    supportTitle: "مدد",
-    supportSub: "ہم عموماً 24 گھنٹوں میں جواب دیتے ہیں",
-    emailSupport: "ای میل سپورٹ",
-
-    profile: "پروفائل",
-    kyc: "KYC",
-    startKyc: "KYC شروع کریں",
-    completeKyc: "KYC مکمل کریں",
-    kycDone: "KYC مکمل۔ شکریہ!",
-
-    statusTitle: "ریگولیٹری حیثیت",
-    statusSub: "اسٹیٹ بینک سینڈ باکس — تیاری اور اپڈیٹس",
-
-    secTitle: "سیکیورٹی اور پرائیویسی",
-    secSub: "ہم آپ کے ڈیٹا کو کیسے محفوظ رکھتے ہیں",
-
-    aboutTitle: "رینٹ بیک کے بارے میں",
-    aboutSub: "کرایہ کو انعامات میں بدلنا",
-
-    founder: "بانی",
-
-    navHome: "ہوم",
-    navPay: "ادائیگی",
-    navRewards: "انعامات",
-    navSupport: "مدد",
-    navProfile: "پروفائل",
-
-    drawerMenu: "مینیو",
-    drawerExplore: "ایکسپلور",
-    drawerStatus: "اسٹیٹس",
-    drawerSecurity: "سیکیورٹی اور پرائیویسی",
-    drawerAbout: "متعلق",
-    drawerFounder: "بانی",
-    drawerPrivacy: "پرائیویسی پالیسی",
-    drawerTerms: "سروس کی شرائط",
-    drawerRole: "کردار",
-    drawerLang: "زبان",
-
-    tenant: "کرایہ دار",
-    landlord: "مالک",
-  },
-} as const;
-
-// ---- Helpers
-const formatPKR = (n: number) =>
-  new Intl.NumberFormat("en-PK", {
-    style: "currency",
-    currency: "PKR",
-    maximumFractionDigits: 0,
-  }).format(n);
-
-const getUtm = () => {
+const getUtm = (): Utm => {
   try {
     const params = new URLSearchParams(window.location.search);
     return {
@@ -205,15 +84,17 @@ const getUtm = () => {
   }
 };
 
-// ---- Reusable UI
 const SectionTitle: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
   <div style={{ marginBottom: 12 }}>
     <div style={{ fontWeight: 700, fontSize: 16 }}>{title}</div>
-    {subtitle ? <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>{subtitle}</div> : null}
+    {subtitle ? (
+      <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>{subtitle}</div>
+    ) : null}
   </div>
 );
 
-const Row: React.FC<{ children: React.ReactNode; right?: React.ReactNode; onClick?: () => void }> = ({ children, right, onClick }) => (
+const Row: React.FC<{ children: React.ReactNode; right?: React.ReactNode; onClick?: () => void }>
+= ({ children, right, onClick }) => (
   <button
     onClick={onClick}
     style={{
@@ -235,7 +116,8 @@ const Row: React.FC<{ children: React.ReactNode; right?: React.ReactNode; onClic
   </button>
 );
 
-const Pill: React.FC<{ children: React.ReactNode; onClick?: () => void }> = ({ children, onClick }) => (
+const Pill: React.FC<{ children: React.ReactNode; onClick?: () => void }>
+= ({ children, onClick }) => (
   <button
     onClick={onClick}
     style={{
@@ -252,6 +134,7 @@ const Pill: React.FC<{ children: React.ReactNode; onClick?: () => void }> = ({ c
   </button>
 );
 
+// Brand logo (same mark as landing)
 const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({ size = 20, stroke = BRAND.primary }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d="M3 11.5L12 4l9 7.5" />
@@ -259,6 +142,7 @@ const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({ size = 20, st
   </svg>
 );
 
+// Animated card styles (brand gradient)
 const CardVisual: React.FC = () => (
   <div
     style={{
@@ -297,68 +181,30 @@ const CardVisual: React.FC = () => (
   </div>
 );
 
-// Rewards starter catalog
+// Rewards data (PK market)
 const rewardsData = [
-  { id: "jazz", title: "Jazz Load", note: "Mobile top-up", save: "Save 5%" },
-  { id: "telenor", title: "Telenor Load", note: "Mobile top-up", save: "Save 5%" },
-  { id: "zong", title: "Zong Load", note: "Mobile top-up", save: "Save 5%" },
-  { id: "ufone", title: "Ufone Load", note: "Mobile top-up", save: "Save 5%" },
-  { id: "easyp", title: "Easypaisa Wallet", note: "Wallet credit", save: "Save 2%" },
-  { id: "jazzc", title: "JazzCash Wallet", note: "Wallet credit", save: "Save 2%" },
-  { id: "daraz", title: "Daraz Voucher", note: "Shopping", save: "Up to 8%" },
-  { id: "careem", title: "Careem Credit", note: "Rides & food", save: "5%" },
-  { id: "foodp", title: "Foodpanda", note: "Food delivery", save: "5%" },
-  { id: "kesc", title: "KE Bill Credit", note: "Utilities", save: "2%" },
-  { id: "lesco", title: "LESCO Credit", note: "Utilities", save: "2%" },
-  { id: "ptcl", title: "PTCL Bill", note: "Broadband", save: "2%" },
+  { id: "jazz",    title: "Jazz Load",        note: "Mobile top-up",     save: "Save 5%" },
+  { id: "telenor", title: "Telenor Load",     note: "Mobile top-up",     save: "Save 5%" },
+  { id: "zong",    title: "Zong Load",        note: "Mobile top-up",     save: "Save 5%" },
+  { id: "ufone",   title: "Ufone Load",       note: "Mobile top-up",     save: "Save 5%" },
+  { id: "easyp",   title: "Easypaisa Wallet", note: "Wallet credit",     save: "Save 2%" },
+  { id: "jazzc",   title: "JazzCash Wallet",  note: "Wallet credit",     save: "Save 2%" },
+  { id: "daraz",   title: "Daraz Voucher",    note: "Shopping",          save: "Up to 8%" },
+  { id: "careem",  title: "Careem Credit",    note: "Rides & food",      save: "5%" },
+  { id: "foodp",   title: "Foodpanda",        note: "Food delivery",     save: "5%" },
+  { id: "kesc",    title: "KE Bill Credit",   note: "Utilities",         save: "2%" },
+  { id: "lesco",   title: "LESCO Credit",     note: "Utilities",         save: "2%" },
+  { id: "ptcl",    title: "PTCL Bill",        note: "Broadband",         save: "2%" },
 ] as const;
 
-const RewardsGrid: React.FC<{ t: any; onRedeem?: (id: string) => void }> = ({ t, onRedeem }) => (
-  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-    {rewardsData.map((r) => (
-      <div
-        key={r.id}
-        style={{
-          padding: 12,
-          borderRadius: 14,
-          border: "1px solid rgba(0,0,0,0.06)",
-          background: BRAND.surface,
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-        }}
-      >
-        <div style={{ fontWeight: 600 }}>{r.title}</div>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>{r.note}</div>
-        <div style={{ marginTop: 6 }}>
-          <span style={{ fontSize: 11, padding: "4px 6px", borderRadius: 8, background: "#ecfdf5", color: BRAND.primary }}>{r.save}</span>
-        </div>
-        <button
-          onClick={() => onRedeem && onRedeem(r.id)}
-          style={{ marginTop: 8, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.primary, color: "white", fontWeight: 600 }}
-        >
-          {t.redeem}
-        </button>
-      </div>
-    ))}
-  </div>
-);
+function parsePercent(save: string): number {
+  const m = save.match(/(\d+)%/);
+  return m ? Number(m[1]) : 5;
+}
 
-// Payment types
-type PaymentStatus = "initiated" | "sent" | "succeeded" | "refunded";
-
-type Payment = {
-  id: string;
-  amount: number;
-  landlord: string;
-  method: "Bank Transfer" | "Card" | "Wallet";
-  status: PaymentStatus;
-  ts: number;
-  ref: string;
-};
-
-// Receipt modal
-const ReceiptModal: React.FC<{ payment: Payment; onClose: () => void }> = ({ payment, onClose }) => {
+// ==== Receipt Modal (payments) ====
+const ReceiptModal: React.FC<{ payment: Payment; onClose: () => void }>
+= ({ payment, onClose }) => {
   const date = new Date(payment.ts).toLocaleString("en-PK");
   return (
     <div
@@ -410,12 +256,100 @@ const ReceiptModal: React.FC<{ payment: Payment; onClose: () => void }> = ({ pay
   );
 };
 
+// ==== Redemption Modal ====
+const RedemptionModal: React.FC<{
+  reward: { id: string; title: string; note: string; save: string } | null;
+  onClose: () => void;
+  onConfirm: (denom: number) => void;
+}> = ({ reward, onClose, onConfirm }) => {
+  if (!reward) return null;
+  const percent = parsePercent(reward.save);
+  const denoms = [100, 250, 500, 1000];
+  return (
+    <div role="dialog" aria-modal="true" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.4)", display: "grid", placeItems: "center", padding: 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 540, background: BRAND.surface, borderRadius: 16, border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 20px 40px rgba(0,0,0,0.25)", padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontWeight: 700 }}>Redeem — {reward.title}</div>
+          <button onClick={onClose} aria-label="Close" style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}>✕</button>
+        </div>
+        <div style={{ marginTop: 10, fontSize: 13, opacity: 0.8 }}>{reward.note} • {reward.save}</div>
+        <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+          {denoms.map((d) => (
+            <button key={d} onClick={() => onConfirm(d)} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, textAlign: "left" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>{formatPKR(d)}</span>
+                <span style={{ fontSize: 12, opacity: 0.8 }}>Est. save ≈ {Math.round((percent/100)*d)} PKR</span>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>Demo redemption — we will email/SMS the voucher code in production.</div>
+      </div>
+    </div>
+  );
+};
+
+// ==== Redeem Receipt Modal ====
+const RedeemReceiptModal: React.FC<{ r: Redemption; onClose: () => void; onFulfill: () => void; onCancel: () => void }>
+= ({ r, onClose, onFulfill, onCancel }) => {
+  const date = new Date(r.ts).toLocaleString("en-PK");
+  return (
+    <div role="dialog" aria-modal="true" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 85, background: "rgba(0,0,0,0.4)", display: "grid", placeItems: "center", padding: 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 720, background: BRAND.surface, borderRadius: 16, border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 20px 40px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 14, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
+            <BrandLogo /> Redeem Receipt
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}>✕</button>
+        </div>
+        <div style={{ padding: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ opacity: 0.7 }}>Ref</div>
+            <div style={{ fontWeight: 700 }}>{r.ref}</div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+            <div style={{ opacity: 0.7 }}>Date</div>
+            <div>{date}</div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+            <div style={{ opacity: 0.7 }}>Reward</div>
+            <div>{r.title}</div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+            <div style={{ opacity: 0.7 }}>Denomination</div>
+            <div>{formatPKR(r.denomination)}</div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+            <div style={{ opacity: 0.7 }}>Estimated Points</div>
+            <div>{r.points}</div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+            <div style={{ opacity: 0.7 }}>Status</div>
+            <div style={{ fontWeight: 600 }}>{r.status}</div>
+          </div>
+          <div style={{ marginTop: 12, opacity: 0.7, fontSize: 12 }}>Demo redemption receipt — no real codes issued.</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "space-between", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={onFulfill} disabled={r.status === "fulfilled"} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: r.status === "fulfilled" ? "#f9fafb" : "#ecfeff", fontWeight: 700 }}>{r.status === "fulfilled" ? "Fulfilled" : "Mark Fulfilled"}</button>
+              <button onClick={onCancel} disabled={r.status === "canceled"} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: r.status === "canceled" ? "#f9fafb" : "#fff7ed", fontWeight: 700 }}>Cancel</button>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => window.print()} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 600 }}>Print / Save PDF</button>
+              <button onClick={onClose} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Optional: Google Sheet logging (Apps Script)
-async function postToSheet(p: Payment, role: "tenant" | "landlord", utm: { source: string; medium: string; campaign: string }) {
+async function postPaymentToSheet(p: Payment, role: Role, utm: Utm) {
   try {
     const endpoint = (window as any).RB_PAYMENTS_ENDPOINT as string | undefined;
     if (!endpoint) return;
-    const payload = {
+    const payload: any = {
       table: "payments",
       ref: p.ref,
       amount: p.amount,
@@ -429,22 +363,46 @@ async function postToSheet(p: Payment, role: "tenant" | "landlord", utm: { sourc
       utmCampaign: utm.campaign,
       ua: navigator.userAgent,
     };
-    await fetch(endpoint, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    await fetch(endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   } catch {}
 }
 
-// ---- Tabs
-const HomeTab: React.FC<{ role: "tenant" | "landlord"; kyc: "none" | "in-progress" | "verified"; goProfile: () => void; t: any }> = ({ role, kyc, goProfile, t }) => {
-  const headline = role === "tenant" ? t.homeTitleTenant : t.homeTitleLandlord;
-  const sub = role === "tenant" ? t.homeSubTenant : t.homeSubLandlord;
+async function postRedemptionToSheet(r: Redemption, role: Role, utm: Utm) {
+  try {
+    const endpoint = (window as any).RB_PAYMENTS_ENDPOINT as string | undefined;
+    if (!endpoint) return;
+    const payload: any = {
+      table: "redemptions",
+      ref: r.ref,
+      user: "", // optional placeholder
+      role,
+      rewardId: r.rewardId,
+      brand: r.brand,
+      title: r.title,
+      denomination: r.denomination,
+      points: r.points,
+      status: r.status,
+      ts: new Date(r.ts).toISOString(),
+      utmSource: utm.source,
+      utmMedium: utm.medium,
+      utmCampaign: utm.campaign,
+      ua: navigator.userAgent,
+    };
+    await fetch(endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  } catch {}
+}
+
+// Pages
+const HomeTab: React.FC<{ role: Role; kyc: KycState; goProfile: () => void }>
+= ({ role, kyc, goProfile }) => {
+  const headline = role === "tenant" ? "Your rent, organized" : "Your rentals, at a glance";
+  const sub = role === "tenant" ? "Track dues, pay faster, and earn rewards." : "See incoming rents and tenant activity.";
+
   return (
     <div>
       <SectionTitle title={headline} subtitle={sub} />
+
+      {/* KYC banner */}
       {kyc !== "verified" ? (
         <div
           style={{
@@ -459,47 +417,53 @@ const HomeTab: React.FC<{ role: "tenant" | "landlord"; kyc: "none" | "in-progres
           }}
         >
           <div>
-            <div style={{ fontWeight: 700 }}>{t.kycTitle}</div>
-            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>{t.kycSub}</div>
+            <div style={{ fontWeight: 700 }}>Verify your identity</div>
+            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>Finish KYC to unlock higher limits and faster payouts.</div>
           </div>
-          <button onClick={goProfile} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}>{t.kycCta}</button>
+          <button onClick={goProfile} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}>Continue KYC</button>
         </div>
       ) : null}
 
       <div style={{ height: 16 }} />
+
+      {/* Card */}
       <CardVisual />
+
       <div style={{ height: 16 }} />
 
+      {/* Simple dashboard rows */}
       {role === "tenant" ? (
         <div style={{ display: "grid", gap: 10 }}>
-          <Row right="PKR 120,000">{t.pendingBalance}</Row>
-          <Row right="Due 1 Oct">{t.upcomingRent}</Row>
-          <Row right="2">{t.newRewards}</Row>
+          <Row right="PKR 120,000">Pending Balance</Row>
+          <Row right="Due 1 Oct">Upcoming Rent</Row>
+          <Row right="2 rewards">New Rewards</Row>
         </div>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          <Row right="3">{t.activeListings}</Row>
-          <Row right="PKR 360,000">{t.expectedMonth}</Row>
-          <Row right="1">{t.followUps}</Row>
+          <Row right="3 units">Active Listings</Row>
+          <Row right="PKR 360,000">Expected This Month</Row>
+          <Row right="1 overdue">Follow-ups</Row>
         </div>
       )}
     </div>
   );
 };
 
-const PayTab: React.FC<{
+type PayTabProps = {
   payments: Payment[];
   addPayment: (p: Payment) => void;
   updatePayment: (id: string, patch: Partial<Payment>) => void;
-  role: "tenant" | "landlord";
-  utm: { source: string; medium: string; campaign: string };
+  role: Role;
+  utm: Utm;
   onOpenReceipt: (p: Payment) => void;
-  t: any;
-}> = ({ payments, addPayment, updatePayment, role, utm, onOpenReceipt, t }) => {
-  const [amount, setAmount] = useState("");
-  const [landlord, setLandlord] = useState("");
+};
+
+const PayTab: React.FC<PayTabProps>
+= ({ payments, addPayment, updatePayment, role, utm, onOpenReceipt }) => {
+  const [amount, setAmount] = useState<string>("");
+  const [landlord, setLandlord] = useState<string>("");
   const [method, setMethod] = useState<Payment["method"]>("Bank Transfer");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<string>("");
 
   const handleCreate = async () => {
     const amt = Number(amount);
@@ -507,15 +471,15 @@ const PayTab: React.FC<{
       setMessage("Enter amount and landlord name.");
       return;
     }
-    const id = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-    const ref = `RB-${Math.floor(100000 + Math.random() * 900000)}`;
+    const id = `${Date.now()}_${Math.floor(Math.random()*1e6)}`;
+    const ref = `RB-${Math.floor(100000+Math.random()*900000)}`;
     const status: PaymentStatus = method === "Bank Transfer" ? "initiated" : "succeeded";
     const base: Payment = { id, amount: amt, landlord: landlord.trim(), method, status, ts: Date.now(), ref };
     addPayment(base);
     setMessage(method === "Bank Transfer" ? "Transfer instructions generated below. Mark as sent when done." : "Payment succeeded (demo). View receipt below.");
     setAmount("");
     setLandlord("");
-    postToSheet(base, role, utm);
+    postPaymentToSheet(base, role, utm);
   };
 
   const markSent = (id: string) => {
@@ -523,7 +487,7 @@ const PayTab: React.FC<{
     if (!p) return;
     const patch: Partial<Payment> = { status: "sent" };
     updatePayment(id, patch);
-    postToSheet({ ...p, ...patch } as Payment, role, utm);
+    postPaymentToSheet({ ...p, ...patch } as Payment, role, utm);
   };
 
   const refund = (id: string) => {
@@ -532,38 +496,36 @@ const PayTab: React.FC<{
     if (p.status === "refunded") return;
     const patch: Partial<Payment> = { status: "refunded" };
     updatePayment(id, patch);
-    postToSheet({ ...p, ...patch } as Payment, role, utm);
+    postPaymentToSheet({ ...p, ...patch } as Payment, role, utm);
   };
 
   const downloadCSV = () => {
-    const headers = ["ref", "amount", "landlord", "method", "status", "ts", "role", "utmSource", "utmMedium", "utmCampaign"];
+    const headers = ["ref","amount","landlord","method","status","ts","role","utmSource","utmMedium","utmCampaign"];
     const rows = payments.map((p) => [p.ref, String(p.amount), p.landlord, p.method, p.status, new Date(p.ts).toISOString(), role, utm.source, utm.medium, utm.campaign]);
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = "rentback-demo-payments.csv";
-    a.click();
+    a.href = url; a.download = "rentback-demo-payments.csv"; a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div>
-      <SectionTitle title={t.payTitle} subtitle={t.paySub} />
+      <SectionTitle title="Pay rent" subtitle="Demo Mode — no real charges" />
 
       <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
         <input
           value={amount}
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
-          placeholder={t.amountPh}
+          placeholder="Amount (PKR)"
           inputMode="numeric"
           style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }}
         />
         <input
           value={landlord}
           onChange={(e) => setLandlord(e.target.value)}
-          placeholder={t.landlordPh}
+          placeholder="Landlord / Property"
           style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }}
         />
         <select
@@ -571,18 +533,19 @@ const PayTab: React.FC<{
           onChange={(e) => setMethod(e.target.value as Payment["method"])}
           style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }}
         >
-          <option>{t.bank}</option>
-          <option>{t.card}</option>
-          <option>{t.wallet}</option>
+          <option>Bank Transfer</option>
+          <option>Card</option>
+          <option>Wallet</option>
         </select>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={handleCreate} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>{t.createDemo}</button>
-          <button onClick={downloadCSV} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 700 }}>{t.downloadCsv}</button>
+          <button onClick={handleCreate} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>Create Payment (Demo)</button>
+          <button onClick={downloadCSV} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 700 }}>Download CSV</button>
         </div>
         {message ? <div style={{ fontSize: 12, color: BRAND.primary }}>{message}</div> : null}
       </div>
 
-      <SectionTitle title={t.recent} />
+      {/* Active / recent payments */}
+      <SectionTitle title="Recent" />
       <div style={{ display: "grid", gap: 10 }}>
         {payments.length === 0 ? (
           <div style={{ fontSize: 13, opacity: 0.7 }}>No demo payments yet.</div>
@@ -597,39 +560,27 @@ const PayTab: React.FC<{
                   <span>{formatPKR(p.amount)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                  <span>
-                    {p.method} • Ref {p.ref}
-                  </span>
+                  <span>{p.method} • Ref {p.ref}</span>
                   <span style={{ color: p.status === "succeeded" ? BRAND.primary : p.status === "sent" ? "#92400e" : p.status === "refunded" ? "#6b7280" : "#1f2937" }}>
                     {p.status === "succeeded" ? "Succeeded" : p.status === "sent" ? "Sent" : p.status === "refunded" ? "Refunded" : "Instructions"}
                   </span>
                 </div>
                 {p.method === "Bank Transfer" && p.status === "initiated" ? (
                   <div style={{ marginTop: 10, fontSize: 12 }}>
-                    <div>
-                      Send to: <b>RentBack Collections</b>
-                    </div>
-                    <div>
-                      IBAN: <b>PK00-RENT-0000-0000-0007</b>
-                    </div>
-                    <div>
-                      Memo: <b>{p.ref}</b>
-                    </div>
-                    <button onClick={() => markSent(p.id)} style={{ marginTop: 8, padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}>
-                      {t.markSent}
-                    </button>
+                    <div>Send to: <b>RentBack Collections</b></div>
+                    <div>IBAN: <b>PK00-RENT-0000-0000-0007</b></div>
+                    <div>Memo: <b>{p.ref}</b></div>
+                    <button onClick={() => markSent(p.id)} style={{ marginTop: 8, padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}>Mark as Sent</button>
                   </div>
                 ) : null}
                 <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button onClick={() => onOpenReceipt(p)} style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 600 }}>
-                    {t.viewReceipt}
-                  </button>
+                  <button onClick={() => onOpenReceipt(p)} style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 600 }}>View Receipt</button>
                   <button
                     onClick={() => refund(p.id)}
                     disabled={p.status === "refunded" || p.status === "initiated"}
                     style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: p.status === "refunded" || p.status === "initiated" ? "#f9fafb" : "#fff7ed", color: "#92400e", fontWeight: 600, opacity: p.status === "refunded" || p.status === "initiated" ? 0.6 : 1 }}
                   >
-                    {p.status === "refunded" ? t.refunded : t.refundDemo}
+                    {p.status === "refunded" ? "Refunded" : "Refund (Demo)"}
                   </button>
                 </div>
               </div>
@@ -640,40 +591,102 @@ const PayTab: React.FC<{
   );
 };
 
-const RewardsTab: React.FC<{ t: any; onRedeem: (id: string) => void }> = ({ t, onRedeem }) => (
-  <div>
-    <SectionTitle title={t.rewardsTitle} subtitle={t.rewardsSub} />
-    <RewardsGrid t={t} onRedeem={onRedeem} />
+// Rewards grid
+const RewardsGrid: React.FC<{ onRedeem: (rewardId: string) => void }>
+= ({ onRedeem }) => (
+  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+    {rewardsData.map((r) => (
+      <div
+        key={r.id}
+        style={{
+          padding: 12,
+          borderRadius: 14,
+          border: "1px solid rgba(0,0,0,0.06)",
+          background: BRAND.surface,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}
+      >
+        <div style={{ fontWeight: 600 }}>{r.title}</div>
+        <div style={{ fontSize: 12, opacity: 0.7 }}>{r.note}</div>
+        <div style={{ marginTop: 6 }}>
+          <span style={{ fontSize: 11, padding: "4px 6px", borderRadius: 8, background: "#ecfdf5", color: BRAND.primary }}>{r.save}</span>
+        </div>
+        <button onClick={() => onRedeem(r.id)} style={{ marginTop: 8, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.primary, color: "white", fontWeight: 600 }}>
+          Redeem
+        </button>
+      </div>
+    ))}
   </div>
 );
 
-const SupportTab: React.FC<{ t: any }> = ({ t }) => (
+const RewardsTab: React.FC<{
+  redemptions: Redemption[];
+  onRedeemStart: (reward: { id: string; title: string; note: string; save: string }) => void;
+  onViewReceipt: (r: Redemption) => void;
+}> = ({ redemptions, onRedeemStart, onViewReceipt }) => (
   <div>
-    <SectionTitle title={t.supportTitle} subtitle={t.supportSub} />
-    <Row right="help@rentback.app">{t.emailSupport}</Row>
+    <SectionTitle title="Rewards" subtitle="Pakistan-focused perks" />
+    <RewardsGrid onRedeem={(id) => {
+      const r = rewardsData.find((x) => x.id === id)!;
+      onRedeemStart(r);
+    }} />
+
+    <div style={{ height: 16 }} />
+    <SectionTitle title="Your redemptions" subtitle="Recent activity" />
+    {redemptions.length === 0 ? (
+      <div style={{ fontSize: 13, opacity: 0.7 }}>No redemptions yet.</div>
+    ) : (
+      <div style={{ display: "grid", gap: 10 }}>
+        {redemptions.slice().sort((a,b)=>b.ts-a.ts).map((r) => (
+          <div key={r.id} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+              <span>{r.title} • {formatPKR(r.denomination)}</span>
+              <span style={{ color: r.status === "fulfilled" ? BRAND.primary : r.status === "canceled" ? "#6b7280" : "#1f2937" }}>{r.status}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+              <span>Ref {r.ref}</span>
+              <button onClick={() => onViewReceipt(r)} style={{ padding: "6px 8px", borderRadius: 8, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 600 }}>View Receipt</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
+const SupportTab: React.FC = () => (
+  <div>
+    <SectionTitle title="Support" subtitle="We usually reply within 24h" />
+    <Row right="help@rentback.app">Email support</Row>
     <div style={{ height: 8 }} />
     <Row right="@rentback">Twitter/X</Row>
   </div>
 );
 
-const ProfileTab: React.FC<{ kyc: "none" | "in-progress" | "verified"; setKyc: (k: any) => void; t: any }> = ({ kyc, setKyc, t }) => (
+const ProfileTab: React.FC<{ kyc: KycState; setKyc: (k: KycState) => void }>
+= ({ kyc, setKyc }) => (
   <div>
-    <SectionTitle title={t.profile} />
-    <Row right={kyc === "verified" ? "Verified" : kyc === "in-progress" ? "In progress" : "Not started"}>{t.kyc}</Row>
+    <SectionTitle title="Profile" />
+    <Row right={kyc === "verified" ? "Verified" : kyc === "in-progress" ? "In progress" : "Not started"}>KYC</Row>
     <div style={{ height: 8 }} />
     {kyc !== "verified" ? (
-      <button onClick={() => setKyc(kyc === "none" ? "in-progress" : "verified")} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}>
-        {kyc === "none" ? t.startKyc : t.completeKyc}
+      <button
+        onClick={() => setKyc(kyc === "none" ? "in-progress" : "verified")}
+        style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}
+      >
+        {kyc === "none" ? "Start KYC" : "Complete KYC"}
       </button>
     ) : (
-      <div style={{ fontSize: 12, opacity: 0.75 }}>{t.kycDone}</div>
+      <div style={{ fontSize: 12, opacity: 0.75 }}>KYC complete. Thanks!</div>
     )}
   </div>
 );
 
-const StatusScreen: React.FC<{ t: any }> = ({ t }) => (
+const StatusScreen: React.FC = () => (
   <div>
-    <SectionTitle title={t.statusTitle} subtitle={t.statusSub} />
+    <SectionTitle title="Regulatory Status" subtitle="SBP Sandbox — preparation & updates" />
     <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>
       <li>Preparation complete (materials & partner outreach)</li>
       <li>Draft application ready</li>
@@ -682,9 +695,9 @@ const StatusScreen: React.FC<{ t: any }> = ({ t }) => (
   </div>
 );
 
-const SecurityPrivacy: React.FC<{ t: any }> = ({ t }) => (
+const SecurityPrivacy: React.FC = () => (
   <div>
-    <SectionTitle title={t.secTitle} subtitle={t.secSub} />
+    <SectionTitle title="Security & Privacy" subtitle="How we protect your data" />
     <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>
       <li>Encryption in transit; least-privilege access</li>
       <li>Payments via licensed partners; no full PAN stored</li>
@@ -695,16 +708,38 @@ const SecurityPrivacy: React.FC<{ t: any }> = ({ t }) => (
   </div>
 );
 
-const AboutScreen: React.FC<{ t: any }> = ({ t }) => (
+const PrivacyScreen: React.FC = () => (
   <div>
-    <SectionTitle title={t.aboutTitle} subtitle={t.aboutSub} />
-    <p style={{ lineHeight: 1.6 }}>RentBack helps tenants pay rent conveniently while earning rewards, and gives landlords clearer visibility on incoming payments.</p>
+    <SectionTitle title="Privacy Policy" subtitle="Short, human-readable version" />
+    <p style={{ lineHeight: 1.6 }}>
+      We collect only what we need to operate RentBack (e.g., contact details, basic device data, and demo payment metadata). 
+      We do not sell your data. You can request deletion subject to legal obligations. For full terms, contact help@rentback.app.
+    </p>
   </div>
 );
 
-const FounderScreen: React.FC<{ t: any }> = ({ t }) => (
+const TermsScreen: React.FC = () => (
   <div>
-    <SectionTitle title={t.founder} />
+    <SectionTitle title="Terms of Service" subtitle="Demo environment" />
+    <p style={{ lineHeight: 1.6 }}>
+      This is a prototype. No real funds move. By using it you agree that actions (payments, redemptions) are simulated. 
+      Production use will be subject to partner and regulatory approvals.
+    </p>
+  </div>
+);
+
+const AboutScreen: React.FC = () => (
+  <div>
+    <SectionTitle title="About RentBack" subtitle="Turning rent into rewards" />
+    <p style={{ lineHeight: 1.6 }}>
+      RentBack helps tenants pay rent conveniently while earning rewards, and gives landlords clearer visibility on incoming payments.
+    </p>
+  </div>
+);
+
+const FounderScreen: React.FC = () => (
+  <div>
+    <SectionTitle title="Founder" />
     <div style={{ display: "grid", gap: 8 }}>
       <Row right="CEO">Suhail Ahmed</Row>
       <Row right="help@rentback.app">Contact</Row>
@@ -712,52 +747,67 @@ const FounderScreen: React.FC<{ t: any }> = ({ t }) => (
   </div>
 );
 
-// ---- App
-export default function App() {
-  const [tab, setTab] = useState<
-    | "home"
-    | "pay"
-    | "rewards"
-    | "support"
-    | "profile"
-    | "status"
-    | "security"
-    | "about"
-    | "founder"
-  >("home");
+// App
+const App: React.FC = () => {
+  const [tab, setTab] = useState<Tab>("home");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [role, setRole] = useState<"tenant" | "landlord">("tenant");
-  const [kyc, setKyc] = useState<"none" | "in-progress" | "verified">("none");
+  const [role, setRole] = useState<Role>("tenant");
+  const [kyc, setKyc] = useState<KycState>("none");
   const [payments, setPayments] = useState<Payment[]>([]);
   const [receiptFor, setReceiptFor] = useState<Payment | null>(null);
-  const [lang, setLang] = useState<"en" | "ur">("en");
+
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
+  const [redeemFor, setRedeemFor] = useState<{ id: string; title: string; note: string; save: string } | null>(null);
+  const [redeemReceiptFor, setRedeemReceiptFor] = useState<Redemption | null>(null);
 
   const utm = useMemo(() => getUtm(), []);
-  const t = STRINGS[lang];
 
-  // Persist/restore demo payments
+  // Load/save demo payments & redemptions to localStorage
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("rb-demo-payments");
-      if (raw) setPayments(JSON.parse(raw));
-    } catch {}
+    try { const raw = localStorage.getItem("rb-demo-payments"); if (raw) setPayments(JSON.parse(raw)); } catch {}
+    try { const rawR = localStorage.getItem("rb-demo-redemptions"); if (rawR) setRedemptions(JSON.parse(rawR)); } catch {}
   }, []);
-  useEffect(() => {
-    try {
-      localStorage.setItem("rb-demo-payments", JSON.stringify(payments));
-    } catch {}
-  }, [payments]);
+  useEffect(() => { try { localStorage.setItem("rb-demo-payments", JSON.stringify(payments)); } catch {} }, [payments]);
+  useEffect(() => { try { localStorage.setItem("rb-demo-redemptions", JSON.stringify(redemptions)); } catch {} }, [redemptions]);
 
-  // Language → set html lang/dir
-  useEffect(() => {
-    document.documentElement.lang = lang;
-    document.documentElement.dir = lang === "ur" ? "rtl" : "ltr";
-  }, [lang]);
+  const handleRedeemConfirm = (denom: number) => {
+    if (!redeemFor) return;
+    const percent = parsePercent(redeemFor.save);
+    const points = Math.round((percent / 100) * denom); // simple estimate
+    const id = `${Date.now()}_${Math.floor(Math.random()*1e6)}`;
+    const ref = `RR-${Math.floor(100000+Math.random()*900000)}`;
+    const r: Redemption = {
+      id,
+      ref,
+      rewardId: redeemFor.id,
+      brand: redeemFor.title,
+      title: redeemFor.title,
+      denomination: denom,
+      points,
+      status: "requested",
+      ts: Date.now(),
+    };
+    setRedemptions((prev) => [r, ...prev]);
+    setRedeemFor(null);
+    postRedemptionToSheet(r, role, utm);
+    setRedeemReceiptFor(r);
+  };
+
+  const toggleFulfill = (r: Redemption) => {
+    const next = { ...r, status: "fulfilled" as RedemptionStatus };
+    setRedemptions((prev) => prev.map((x) => x.id === r.id ? next : x));
+    postRedemptionToSheet(next, role, utm);
+  };
+  const toggleCancel = (r: Redemption) => {
+    const next = { ...r, status: "canceled" as RedemptionStatus };
+    setRedemptions((prev) => prev.map((x) => x.id === r.id ? next : x));
+    postRedemptionToSheet(next, role, utm);
+  };
 
   const content = useMemo(() => {
     switch (tab) {
       case "home":
-        return <HomeTab role={role} kyc={kyc} goProfile={() => setTab("profile")} t={t} />;
+        return <HomeTab role={role} kyc={kyc} goProfile={() => setTab("profile")} />;
       case "pay":
         return (
           <PayTab
@@ -767,27 +817,36 @@ export default function App() {
             role={role}
             utm={utm}
             onOpenReceipt={(p) => setReceiptFor(p)}
-            t={t}
           />
         );
       case "rewards":
-        return <RewardsTab t={t} onRedeem={(id) => alert(`Redeem ${id} — coming soon`)} />;
+        return (
+          <RewardsTab
+            redemptions={redemptions}
+            onRedeemStart={(reward) => setRedeemFor(reward)}
+            onViewReceipt={(r) => setRedeemReceiptFor(r)}
+          />
+        );
       case "support":
-        return <SupportTab t={t} />;
+        return <SupportTab />;
       case "profile":
-        return <ProfileTab kyc={kyc} setKyc={setKyc} t={t} />;
+        return <ProfileTab kyc={kyc} setKyc={setKyc} />;
       case "status":
-        return <StatusScreen t={t} />;
+        return <StatusScreen />;
       case "security":
-        return <SecurityPrivacy t={t} />;
+        return <SecurityPrivacy />;
       case "about":
-        return <AboutScreen t={t} />;
+        return <AboutScreen />;
       case "founder":
-        return <FounderScreen t={t} />;
+        return <FounderScreen />;
+      case "privacy":
+        return <PrivacyScreen />;
+      case "terms":
+        return <TermsScreen />;
       default:
         return null;
     }
-  }, [tab, role, kyc, payments, utm, t]);
+  }, [tab, role, kyc, payments, utm, redemptions]);
 
   return (
     <div
@@ -819,13 +878,20 @@ export default function App() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
-          <BrandLogo /> {t.appName}
+          <BrandLogo />
+          RentBack
         </div>
         <button
           onClick={() => setMenuOpen(true)}
           aria-label="Open menu"
-          style={{ border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface, borderRadius: 10, padding: 8 }}
+          style={{
+            border: "1px solid rgba(0,0,0,0.1)",
+            background: BRAND.surface,
+            borderRadius: 10,
+            padding: 8,
+          }}
         >
+          {/* Hamburger */}
           <div style={{ width: 18, height: 2, background: "#111", marginBottom: 3 }} />
           <div style={{ width: 18, height: 2, background: "#111", marginBottom: 3 }} />
           <div style={{ width: 18, height: 2, background: "#111" }} />
@@ -851,23 +917,23 @@ export default function App() {
           alignItems: "center",
         }}
       >
-        {[
-          { key: "home", label: t.navHome },
-          { key: "pay", label: t.navPay },
-          { key: "rewards", label: t.navRewards },
-          { key: "support", label: t.navSupport },
-          { key: "profile", label: t.navProfile },
-        ].map((it) => (
+        {([
+          { key: "home", label: "Home" },
+          { key: "pay", label: "Pay" },
+          { key: "rewards", label: "Rewards" },
+          { key: "support", label: "Support" },
+          { key: "profile", label: "Profile" },
+        ] as { key: Tab; label: string }[]).map((it) => (
           <button
             key={it.key}
-            onClick={() => setTab(it.key as any)}
+            onClick={() => setTab(it.key)}
             style={{
               height: "100%",
               background: "transparent",
               border: "none",
               cursor: "pointer",
-              fontWeight: tab === (it.key as any) ? 700 : 500,
-              color: tab === (it.key as any) ? BRAND.primary : "#0f172a",
+              fontWeight: tab === it.key ? 700 : 500,
+              color: tab === it.key ? BRAND.primary : "#0f172a",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -903,37 +969,52 @@ export default function App() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontWeight: 700 }}>{t.drawerMenu}</div>
+              <div style={{ fontWeight: 700 }}>Menu</div>
               <button onClick={() => setMenuOpen(false)} aria-label="Close" style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}>✕</button>
             </div>
 
-            <SectionTitle title={t.drawerExplore} />
-            <Row onClick={() => { setTab("status"); setMenuOpen(false); }}>{t.drawerStatus}</Row>
-            <Row onClick={() => { setTab("security"); setMenuOpen(false); }}>{t.drawerSecurity}</Row>
-            <Row onClick={() => { setTab("rewards"); setMenuOpen(false); }}>{t.navRewards}</Row>
-            <Row onClick={() => { setTab("about"); setMenuOpen(false); }}>{t.drawerAbout}</Row>
-            <Row onClick={() => { setTab("founder"); setMenuOpen(false); }}>{t.drawerFounder}</Row>
-            <Row onClick={() => { window.open("/privacy", "_blank"); }}>{t.drawerPrivacy}</Row>
-            <Row onClick={() => { window.open("/terms", "_blank"); }}>{t.drawerTerms}</Row>
+            <SectionTitle title="Explore" />
+            <Row onClick={() => { setTab("status"); setMenuOpen(false); }}>Status</Row>
+            <Row onClick={() => { setTab("security"); setMenuOpen(false); }}>Security & Privacy</Row>
+            <Row onClick={() => { setTab("rewards"); setMenuOpen(false); }}>Rewards</Row>
+            <Row onClick={() => { setTab("about"); setMenuOpen(false); }}>About</Row>
+            <Row onClick={() => { setTab("founder"); setMenuOpen(false); }}>Founder</Row>
+            <Row onClick={() => { setTab("privacy"); setMenuOpen(false); }}>Privacy Policy</Row>
+            <Row onClick={() => { setTab("terms"); setMenuOpen(false); }}>Terms of Service</Row>
 
             <div style={{ height: 6 }} />
-            <SectionTitle title={t.drawerRole} subtitle="Switch experience" />
+            <SectionTitle title="Role" subtitle="Switch experience" />
             <div style={{ display: "flex", gap: 8 }}>
-              <Pill onClick={() => setRole("tenant")}>{role === "tenant" ? "● " + t.tenant : t.tenant}</Pill>
-              <Pill onClick={() => setRole("landlord")}>{role === "landlord" ? "● " + t.landlord : t.landlord}</Pill>
-            </div>
-
-            <div style={{ height: 6 }} />
-            <SectionTitle title={t.drawerLang} />
-            <div style={{ display: "flex", gap: 8 }}>
-              <Pill onClick={() => setLang("en")}>{lang === "en" ? "● EN" : "EN"}</Pill>
-              <Pill onClick={() => setLang("ur")}>{lang === "ur" ? "● UR" : "UR"}</Pill>
+              <Pill onClick={() => setRole("tenant")}>{role === "tenant" ? "● Tenant" : "Tenant"}</Pill>
+              <Pill onClick={() => setRole("landlord")}>{role === "landlord" ? "● Landlord" : "Landlord"}</Pill>
             </div>
           </div>
         </div>
       ) : null}
 
-      {receiptFor ? <ReceiptModal payment={receiptFor} onClose={() => setReceiptFor(null)} /> : null}
+      {/* Modals */}
+      {receiptFor ? (
+        <ReceiptModal payment={receiptFor} onClose={() => setReceiptFor(null)} />
+      ) : null}
+
+      {redeemFor ? (
+        <RedemptionModal
+          reward={redeemFor}
+          onClose={() => setRedeemFor(null)}
+          onConfirm={(denom) => handleRedeemConfirm(denom)}
+        />
+      ) : null}
+
+      {redeemReceiptFor ? (
+        <RedeemReceiptModal
+          r={redeemReceiptFor}
+          onClose={() => setRedeemReceiptFor(null)}
+          onFulfill={() => { if (redeemReceiptFor) toggleFulfill(redeemReceiptFor); }}
+          onCancel={() => { if (redeemReceiptFor) toggleCancel(redeemReceiptFor); }}
+        />
+      ) : null}
     </div>
   );
-}
+};
+
+export default App;
