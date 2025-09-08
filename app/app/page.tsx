@@ -9,13 +9,14 @@ import React, { useEffect, useMemo, useState } from "react";
  * - Right drawer: Status, Security & Privacy, Rewards, About, Founder, Privacy, Terms
  * - Role switch: Tenant / Landlord
  * - KYC banner → Profile
- * - Demo Payments: create / mark sent / refund + receipt modal + CSV + Sheet logging
- * - Rewards: PK catalog → redeem modal → local list + receipt modal + Sheet logging
+ * - Demo Payments + receipt modal + CSV + Sheet logging
+ * - Rewards catalog + redeem flow + receipt + Sheet logging
  * - LocalStorage persistence for payments, redemptions, and language
  */
 
+// ---------- Brand ----------
 const BRAND = {
-  primary: "#059669",
+  primary: "#059669", // emerald-600
   primarySoft: "#10b981",
   primaryLite: "#34d399",
   teal: "#14b8a6",
@@ -25,7 +26,18 @@ const BRAND = {
   ring: "rgba(5,150,105,0.20)",
 } as const;
 
-type Tab = "home" | "pay" | "rewards" | "support" | "profile" | "status" | "security" | "about" | "founder";
+// ---------- Types ----------
+type Tab =
+  | "home"
+  | "pay"
+  | "rewards"
+  | "support"
+  | "profile"
+  | "status"
+  | "security"
+  | "about"
+  | "founder";
+
 type Role = "tenant" | "landlord";
 type KycState = "none" | "in-progress" | "verified";
 
@@ -54,10 +66,39 @@ type Redemption = {
 };
 
 type Utm = { source: string; medium: string; campaign: string };
-type I18n = { [key: string]: any };
 
+/**
+ * Structural i18n shape — intentionally *loose*
+ * so both EN and UR fit without literal string unions.
+ */
+type I18n = {
+  [key: string]: any;
+  appName: string;
+  menu: string;
+  nav: { home: string; pay: string; rewards: string; support: string; profile: string };
+  drawer: {
+    explore: string; status: string; security: string; rewards: string; about: string; founder: string;
+    privacy: string; terms: string; role: string; roleHint: string; tenant: string; landlord: string; lang: string;
+  };
+  home: any;
+  pay: any;
+  rewards: any;
+  support: any;
+  profile: any;
+  status: { title: string; subtitle: string; items: string[] };
+  security: { title: string; subtitle: string; items: string[] };
+  about: { title: string; sub: string; body: string };
+  founder: { title: string; contact: string };
+  langNames: { en: string; ur: string };
+};
+
+// ---------- Utils ----------
 const formatPKR = (n: number) =>
-  new Intl.NumberFormat("en-PK", { style: "currency", currency: "PKR", maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat("en-PK", {
+    style: "currency",
+    currency: "PKR",
+    maximumFractionDigits: 0,
+  }).format(n);
 
 const getUtm = (): Utm => {
   try {
@@ -80,8 +121,21 @@ const getUA = () => {
   }
 };
 
-const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({ size = 20, stroke = BRAND.primary }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({
+  size = 20,
+  stroke = BRAND.primary,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={stroke}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
     <path d="M3 11.5L12 4l9 7.5" />
     <path d="M5 10v9h14v-9" />
   </svg>
@@ -94,7 +148,11 @@ const SectionTitle: React.FC<{ title: string; subtitle?: string }> = ({ title, s
   </div>
 );
 
-const Row: React.FC<{ children: React.ReactNode; right?: React.ReactNode; onClick?: () => void }> = ({ children, right, onClick }) => {
+const Row: React.FC<{
+  children: React.ReactNode;
+  right?: React.ReactNode;
+  onClick?: () => void;
+}> = ({ children, right, onClick }) => {
   const Comp: any = onClick ? "button" : "div";
   return (
     <Comp
@@ -136,6 +194,7 @@ const Pill: React.FC<{ children: React.ReactNode; onClick?: () => void }> = ({ c
   </button>
 );
 
+// Animated card visual
 const CardVisual: React.FC = () => (
   <div
     style={{
@@ -153,7 +212,13 @@ const CardVisual: React.FC = () => (
       animation: "rb-gradient-move 12s ease infinite",
     }}
   >
-    <div style={{ position: "absolute", inset: 0, background: "linear-gradient( to bottom right, rgba(255,255,255,0.14), rgba(255,255,255,0) )" }} />
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: "linear-gradient( to bottom right, rgba(255,255,255,0.14), rgba(255,255,255,0) )",
+      }}
+    />
     <div style={{ position: "absolute", inset: 0, padding: 18, display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
@@ -162,6 +227,7 @@ const CardVisual: React.FC = () => (
         </div>
         <span style={{ fontSize: 12, opacity: 0.9, color: "#0f172a" }}>VIRTUAL • Debit</span>
       </div>
+
       <div style={{ marginTop: "auto", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: 1 }}>
         <div style={{ fontSize: 18, fontWeight: 600, color: "#0f172a" }}>**** **** **** 0007</div>
         <div style={{ display: "flex", gap: 20, marginTop: 6, fontSize: 12, color: "#0f172a" }}>
@@ -173,6 +239,7 @@ const CardVisual: React.FC = () => (
   </div>
 );
 
+// ---------- Rewards Catalog ----------
 const rewardsCatalog = [
   { id: "jazz", brand: "Jazz", title: "Jazz Load", note: "Mobile top-up", save: "Save 5%", denom: [200, 500, 1000] },
   { id: "telenor", brand: "Telenor", title: "Telenor Load", note: "Mobile top-up", save: "Save 5%", denom: [200, 500, 1000] },
@@ -188,7 +255,8 @@ const rewardsCatalog = [
   { id: "ptcl", brand: "PTCL", title: "PTCL Bill", note: "Broadband", save: "2%", denom: [500, 1000, 2000] },
 ] as const;
 
-const copy = {
+// ---------- i18n (typed WIDE to avoid literal unions) ----------
+const copy: Record<"en" | "ur", I18n> = {
   en: {
     appName: "RentBack",
     menu: "Menu",
@@ -262,7 +330,12 @@ const copy = {
       points: "Points",
       status: "Status",
     },
-    support: { title: "Support", subtitle: "We usually reply within 24h", email: "Email support", twitter: "Twitter/X" },
+    support: {
+      title: "Support",
+      subtitle: "We usually reply within 24h",
+      email: "Email support",
+      twitter: "Twitter/X",
+    },
     profile: {
       title: "Profile",
       kyc: "KYC",
@@ -276,7 +349,11 @@ const copy = {
     status: {
       title: "Regulatory Status",
       subtitle: "SBP Sandbox — preparation & updates",
-      items: ["Preparation complete (materials & partner outreach)", "Draft application ready", "Awaiting sandbox submission window"],
+      items: [
+        "Preparation complete (materials & partner outreach)",
+        "Draft application ready",
+        "Awaiting sandbox submission window",
+      ],
     },
     security: {
       title: "Security & Privacy",
@@ -289,13 +366,18 @@ const copy = {
         "Report issues: help@rentback.app",
       ],
     },
-    about: { title: "About RentBack", sub: "Turning rent into rewards", body: "RentBack helps tenants pay rent conveniently while earning rewards, and gives landlords clearer visibility on incoming payments." },
+    about: {
+      title: "About RentBack",
+      sub: "Turning rent into rewards",
+      body:
+        "RentBack helps tenants pay rent conveniently while earning rewards, and gives landlords clearer visibility on incoming payments.",
+    },
     founder: { title: "Founder", contact: "Contact" },
     langNames: { en: "English", ur: "اردو" },
   },
   ur: {
     appName: "RentBack",
-    menu: "می뉴",
+    menu: "مینیو",
     nav: { home: "ہوم", pay: "ادائیگی", rewards: "انعامات", support: "مدد", profile: "پروفائل" },
     drawer: {
       explore: "ایکسپلور",
@@ -366,7 +448,12 @@ const copy = {
       points: "پوائنٹس",
       status: "اسٹیٹس",
     },
-    support: { title: "مدد", subtitle: "عام طور پر 24 گھنٹوں میں جواب", email: "ای میل سپورٹ", twitter: "ٹوئٹر/X" },
+    support: {
+      title: "مدد",
+      subtitle: "عام طور پر 24 گھنٹوں میں جواب",
+      email: "ای میل سپورٹ",
+      twitter: "ٹوئٹر/X",
+    },
     profile: {
       title: "پروفائل",
       kyc: "KYC",
@@ -380,7 +467,11 @@ const copy = {
     status: {
       title: "ریگولیٹری اسٹیٹس",
       subtitle: "SBP سینڈ باکس — تیاری اور اپ ڈیٹس",
-      items: ["تیاری مکمل (مواد اور پارٹنر آؤٹ ریچ)", "ڈرافٹ درخواست تیار", "سینڈ باکس جمع کرانے کی ونڈو کا انتظار"],
+      items: [
+        "تیاری مکمل (مواد اور پارٹنر آؤٹ ریچ)",
+        "ڈرافٹ درخواست تیار",
+        "سینڈ باکس جمع کرانے کی ونڈو کا انتظار",
+      ],
     },
     security: {
       title: "سیکورٹی اور پرائیویسی",
@@ -393,24 +484,34 @@ const copy = {
         "رابطہ: help@rentback.app",
       ],
     },
-    about: { title: "RentBack کے بارے میں", sub: "کرائے کو انعامات میں بدلنا", body: "RentBack کرایہ داروں کو سہولت سے ادائیگی اور انعامات دیتا ہے اور مالکان کو آمدنی پر واضح نظر فراہم کرتا ہے۔" },
+    about: {
+      title: "RentBack کے بارے میں",
+      sub: "کرائے کو انعامات میں بدلنا",
+      body:
+        "RentBack کرایہ داروں کو سہولت سے ادائیگی اور انعامات دیتا ہے اور مالکان کو آمدنی پر واضح نظر فراہم کرتا ہے۔",
+    },
     founder: { title: "بانی", contact: "رابطہ" },
     langNames: { en: "English", ur: "اردو" },
   },
-} as const;
+};
 
-// -------- Sheet logging ----------
+// ---------- Sheet logging ----------
 async function postToSheet(payload: Record<string, any>) {
   try {
     const endpoint = (window as any).RB_PAYMENTS_ENDPOINT as string | undefined;
     if (!endpoint) return;
     const key = (window as any).RB_PAYMENTS_SECRET as string | undefined;
     const body = key ? { ...payload, key } : payload;
-    await fetch(endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    await fetch(endpoint, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
   } catch {}
 }
 
-// -------- Modals ----------
+// ---------- Modals ----------
 const PaymentReceiptModal: React.FC<{ t: I18n; payment: Payment; onClose: () => void }> = ({ t, payment, onClose }) => {
   const date = new Date(payment.ts).toLocaleString("en-PK");
   return (
@@ -431,8 +532,12 @@ const PaymentReceiptModal: React.FC<{ t: I18n; payment: Payment; onClose: () => 
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}><div style={{ opacity: 0.7 }}>Amount</div><div style={{ fontWeight: 700 }}>{formatPKR(payment.amount)}</div></div>
           <div style={{ marginTop: 12, opacity: 0.7, fontSize: 12 }}>{t.pay.demoNote}</div>
           <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-            <button onClick={() => window.print()} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 600 }}>{t.pay.print}</button>
-            <button onClick={onClose} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>{t.pay.close}</button>
+            <button onClick={() => window.print()} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 600 }}>
+              {t.pay.print}
+            </button>
+            <button onClick={onClose} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>
+              {t.pay.close}
+            </button>
           </div>
         </div>
       </div>
@@ -440,7 +545,12 @@ const PaymentReceiptModal: React.FC<{ t: I18n; payment: Payment; onClose: () => 
   );
 };
 
-const RedeemModal: React.FC<{ t: I18n; reward: (typeof rewardsCatalog)[number] | null; onClose: () => void; onConfirm: (denom: number) => void; }> = ({ t, reward, onClose, onConfirm }) => {
+const RedeemModal: React.FC<{
+  t: I18n;
+  reward: (typeof rewardsCatalog)[number] | null;
+  onClose: () => void;
+  onConfirm: (denom: number) => void;
+}> = ({ t, reward, onClose, onConfirm }) => {
   const [denom, setDenom] = useState<number | null>(null);
   if (!reward) return null;
   return (
@@ -484,8 +594,12 @@ const RedeemReceiptModal: React.FC<{ t: I18n; item: Redemption; onClose: () => v
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}><div style={{ opacity: 0.7 }}>{t.rewards.status}</div><div style={{ fontWeight: 600 }}>{item.status}</div></div>
           <div style={{ marginTop: 12, opacity: 0.7, fontSize: 12 }}>Demo receipt — no real fulfillment performed.</div>
           <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-            <button onClick={() => window.print()} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 600 }}>{t.pay.print}</button>
-            <button onClick={onClose} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>{t.pay.close}</button>
+            <button onClick={() => window.print()} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 600 }}>
+              {t.pay.print}
+            </button>
+            <button onClick={onClose} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>
+              {t.pay.close}
+            </button>
           </div>
         </div>
       </div>
@@ -493,13 +607,15 @@ const RedeemReceiptModal: React.FC<{ t: I18n; item: Redemption; onClose: () => v
   );
 };
 
-// -------- Tabs --------
+// ---------- Pages ----------
 const HomeTab: React.FC<{ t: I18n; role: Role; kyc: KycState; goProfile: () => void }> = ({ t, role, kyc, goProfile }) => {
   const headline = role === "tenant" ? t.home.headlineTenant : t.home.headlineLandlord;
   const sub = role === "tenant" ? t.home.subTenant : t.home.subLandlord;
+
   return (
     <div>
       <SectionTitle title={headline} subtitle={sub} />
+
       {kyc !== "verified" ? (
         <div style={{ padding: 14, borderRadius: 16, border: `1px solid ${BRAND.ring}`, background: "linear-gradient(180deg, #f0fdf4, #ffffff)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div>
@@ -511,9 +627,11 @@ const HomeTab: React.FC<{ t: I18n; role: Role; kyc: KycState; goProfile: () => v
           </button>
         </div>
       ) : null}
+
       <div style={{ height: 16 }} />
       <CardVisual />
       <div style={{ height: 16 }} />
+
       {role === "tenant" ? (
         <div style={{ display: "grid", gap: 10 }}>
           <Row right="PKR 120,000">{t.home.tenantRows.pending}</Row>
@@ -614,11 +732,14 @@ const PayTab: React.FC<PayTabProps> = ({ t, payments, addPayment, updatePayment,
   return (
     <div>
       <SectionTitle title={t.pay.title} subtitle={t.pay.subtitle} />
+
       <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
         <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} placeholder={t.pay.amount} inputMode="numeric" style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }} />
         <input value={landlord} onChange={(e) => setLandlord(e.target.value)} placeholder={t.pay.landlord} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }} />
         <select value={method} onChange={(e) => setMethod(e.target.value as Payment["method"])} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }}>
-          <option>Bank Transfer</option><option>Card</option><option>Wallet</option>
+          <option>Bank Transfer</option>
+          <option>Card</option>
+          <option>Wallet</option>
         </select>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button onClick={handleCreate} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>{t.pay.create}</button>
@@ -632,48 +753,67 @@ const PayTab: React.FC<PayTabProps> = ({ t, payments, addPayment, updatePayment,
         {payments.length === 0 ? (
           <div style={{ fontSize: 13, opacity: 0.7 }}>No demo payments yet.</div>
         ) : (
-          payments.slice().sort((a, b) => b.ts - a.ts).map((p) => (
-            <div key={p.id} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
-                <span>{p.landlord}</span><span>{formatPKR(p.amount)}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                <span>{p.method} • Ref {p.ref}</span>
-                <span style={{ color: p.status === "succeeded" ? BRAND.primary : p.status === "sent" ? "#92400e" : p.status === "refunded" ? "#6b7280" : "#1f2937" }}>
-                  {p.status === "succeeded" ? t.pay.succeeded : p.status === "sent" ? t.pay.sent : p.status === "refunded" ? t.pay.refunded : t.pay.instructions}
-                </span>
-              </div>
-              {p.method === "Bank Transfer" && p.status === "initiated" ? (
-                <div style={{ marginTop: 10, fontSize: 12 }}>
-                  <div>{t.pay.transferTo}: <b>{t.pay.collections}</b></div>
-                  <div>{t.pay.iban}: <b>{t.pay.ibanValue}</b></div>
-                  <div>{t.pay.memo}: <b>{p.ref}</b></div>
-                  <button onClick={() => markSent(p.id)} style={{ marginTop: 8, padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}>
-                    {t.pay.markSent}
+          payments
+            .slice()
+            .sort((a, b) => b.ts - a.ts)
+            .map((p) => (
+              <div key={p.id} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+                  <span>{p.landlord}</span>
+                  <span>{formatPKR(p.amount)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                  <span>{p.method} • Ref {p.ref}</span>
+                  <span
+                    style={{
+                      color:
+                        p.status === "succeeded" ? BRAND.primary :
+                        p.status === "sent" ? "#92400e" :
+                        p.status === "refunded" ? "#6b7280" : "#1f2937",
+                    }}
+                  >
+                    {p.status === "succeeded" ? t.pay.succeeded : p.status === "sent" ? t.pay.sent : p.status === "refunded" ? t.pay.refunded : t.pay.instructions}
+                  </span>
+                </div>
+                {p.method === "Bank Transfer" && p.status === "initiated" ? (
+                  <div style={{ marginTop: 10, fontSize: 12 }}>
+                    <div>{t.pay.transferTo}: <b>{t.pay.collections}</b></div>
+                    <div>{t.pay.iban}: <b>{t.pay.ibanValue}</b></div>
+                    <div>{t.pay.memo}: <b>{p.ref}</b></div>
+                    <button onClick={() => markSent(p.id)} style={{ marginTop: 8, padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}>
+                      {t.pay.markSent}
+                    </button>
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => onOpenReceipt(p)} style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 600 }}>
+                    {t.pay.receipt}
+                  </button>
+                  <button
+                    onClick={() => refund(p.id)}
+                    disabled={p.status === "refunded" || p.status === "initiated"}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: `1px solid ${BRAND.ring}`,
+                      background: p.status === "refunded" || p.status === "initiated" ? "#f9fafb" : "#fff7ed",
+                      color: "#92400e",
+                      fontWeight: 600,
+                      opacity: p.status === "refunded" || p.status === "initiated" ? 0.6 : 1,
+                    }}
+                  >
+                    {p.status === "refunded" ? t.pay.refunded : t.pay.refund}
                   </button>
                 </div>
-              ) : null}
-              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={() => onOpenReceipt(p)} style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 600 }}>
-                  {t.pay.receipt}
-                </button>
-                <button
-                  onClick={() => refund(p.id)}
-                  disabled={p.status === "refunded" || p.status === "initiated"}
-                  style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: p.status === "refunded" || p.status === "initiated" ? "#f9fafb" : "#fff7ed", color: "#92400e", fontWeight: 600, opacity: p.status === "refunded" || p.status === "initiated" ? 0.6 : 1 }}
-                >
-                  {p.status === "refunded" ? t.pay.refunded : t.pay.refund}
-                </button>
               </div>
-            </div>
-          ))
+            ))
         )}
       </div>
     </div>
   );
 };
 
-const RewardsGrid: React.FC<{ t: I18n; onRedeem: (reward: (typeof rewardsCatalog)[number]) => void; }> = ({ t, onRedeem }) => (
+const RewardsGrid: React.FC<{ t: I18n; onRedeem: (reward: (typeof rewardsCatalog)[number]) => void }> = ({ t, onRedeem }) => (
   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
     {rewardsCatalog.map((r) => (
       <div key={r.id} style={{ padding: 12, borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -726,35 +866,41 @@ const RewardsTab: React.FC<{
     <div>
       <SectionTitle title={t.rewards.title} subtitle={t.rewards.subtitle} />
       <RewardsGrid t={t} onRedeem={onOpenModal} />
+
       <div style={{ height: 16 }} />
       <SectionTitle title={t.rewards.recent} />
       {redemptions.length === 0 ? (
         <div style={{ fontSize: 13, opacity: 0.7 }}>{t.rewards.none}</div>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          {redemptions.slice().sort((a, b) => b.ts - a.ts).map((r) => (
-            <div key={r.id} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
-                <span>{r.brand} — {r.title} ({formatPKR(r.denomination)})</span>
-                <span style={{ color: r.status === "fulfilled" ? BRAND.primary : r.status === "cancelled" ? "#6b7280" : "#1f2937" }}>{r.status}</span>
+          {redemptions
+            .slice()
+            .sort((a, b) => b.ts - a.ts)
+            .map((r) => (
+              <div key={r.id} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+                  <span>{r.brand} — {r.title} ({formatPKR(r.denomination)})</span>
+                  <span style={{ color: r.status === "fulfilled" ? BRAND.primary : r.status === "cancelled" ? "#6b7280" : "#1f2937" }}>
+                    {r.status}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                  <span>Ref {r.ref} • {t.rewards.points}: {r.points}</span>
+                  <span>{new Date(r.ts).toLocaleString("en-PK")}</span>
+                </div>
+                <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => onOpenRedeemReceipt(r)} style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 600 }}>
+                    {t.rewards.viewReceipt}
+                  </button>
+                  <button onClick={() => mark(r.id, "fulfilled")} disabled={r.status === "fulfilled"} style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: r.status === "fulfilled" ? "#f3f4f6" : "#ecfdf5", color: BRAND.primary, fontWeight: 600, opacity: r.status === "fulfilled" ? 0.6 : 1 }}>
+                    {t.rewards.markFulfilled}
+                  </button>
+                  <button onClick={() => mark(r.id, "cancelled")} disabled={r.status === "cancelled"} style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: r.status === "cancelled" ? "#f3f4f6" : "#fff7ed", color: "#92400e", fontWeight: 600, opacity: r.status === "cancelled" ? 0.6 : 1 }}>
+                    {t.rewards.markCancelled}
+                  </button>
+                </div>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                <span>Ref {r.ref} • {t.rewards.points}: {r.points}</span>
-                <span>{new Date(r.ts).toLocaleString("en-PK")}</span>
-              </div>
-              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={() => onOpenRedeemReceipt(r)} style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 600 }}>
-                  {t.rewards.viewReceipt}
-                </button>
-                <button onClick={() => mark(r.id, "fulfilled")} disabled={r.status === "fulfilled"} style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: r.status === "fulfilled" ? "#f3f4f6" : "#ecfdf5", color: BRAND.primary, fontWeight: 600, opacity: r.status === "fulfilled" ? 0.6 : 1 }}>
-                  {t.rewards.markFulfilled}
-                </button>
-                <button onClick={() => mark(r.id, "cancelled")} disabled={r.status === "cancelled"} style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: r.status === "cancelled" ? "#f3f4f6" : "#fff7ed", color: "#92400e", fontWeight: 600, opacity: r.status === "cancelled" ? 0.6 : 1 }}>
-                  {t.rewards.markCancelled}
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
         </div>
       )}
     </div>
@@ -773,7 +919,9 @@ const SupportTab: React.FC<{ t: I18n }> = ({ t }) => (
 const ProfileTab: React.FC<{ t: I18n; kyc: KycState; setKyc: (k: KycState) => void }> = ({ t, kyc, setKyc }) => (
   <div>
     <SectionTitle title={t.profile.title} />
-    <Row right={kyc === "verified" ? t.profile.verified : kyc === "in-progress" ? t.profile.inprogress : t.profile.notStarted}>{t.profile.kyc}</Row>
+    <Row right={kyc === "verified" ? t.profile.verified : kyc === "in-progress" ? t.profile.inprogress : t.profile.notStarted}>
+      {t.profile.kyc}
+    </Row>
     <div style={{ height: 8 }} />
     {kyc !== "verified" ? (
       <button onClick={() => setKyc(kyc === "none" ? "in-progress" : "verified")} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}>
@@ -788,14 +936,18 @@ const ProfileTab: React.FC<{ t: I18n; kyc: KycState; setKyc: (k: KycState) => vo
 const StatusScreen: React.FC<{ t: I18n }> = ({ t }) => (
   <div>
     <SectionTitle title={t.status.title} subtitle={t.status.subtitle} />
-    <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>{t.status.items.map((it: string, i: number) => (<li key={i}>{it}</li>))}</ul>
+    <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>
+      {t.status.items.map((it: string, i: number) => (<li key={i}>{it}</li>))}
+    </ul>
   </div>
 );
 
 const SecurityPrivacy: React.FC<{ t: I18n }> = ({ t }) => (
   <div>
     <SectionTitle title={t.security.title} subtitle={t.security.subtitle} />
-    <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>{t.security.items.map((it: string, i: number) => (<li key={i}>{it}</li>))}</ul>
+    <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>
+      {t.security.items.map((it: string, i: number) => (<li key={i}>{it}</li>))}
+    </ul>
   </div>
 );
 
@@ -816,7 +968,7 @@ const FounderScreen: React.FC<{ t: I18n }> = ({ t }) => (
   </div>
 );
 
-// -------- App --------
+// ---------- App ----------
 const App: React.FC = () => {
   const [tab, setTab] = useState<Tab>("home");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -829,20 +981,18 @@ const App: React.FC = () => {
   const [redeemReceipt, setRedeemReceipt] = useState<Redemption | null>(null);
 
   const [lang, setLang] = useState<"en" | "ur">("en");
-  const t: I18n = (copy as any)[lang] as I18n;
+  const t: I18n = useMemo(() => (copy as Record<"en" | "ur", I18n>)[lang], [lang]);
   const dir: "ltr" | "rtl" = lang === "ur" ? "rtl" : "ltr";
 
   const utm = useMemo(() => getUtm(), []);
 
-  // Load saved language first time
+  // language → reflect on <html> and persist
   useEffect(() => {
     try {
       const saved = localStorage.getItem("rb-lang");
-      if (saved === "en" || saved === "ur") setLang(saved as any);
+      if (saved === "en" || saved === "ur") setLang(saved);
     } catch {}
   }, []);
-
-  // Reflect lang/dir on <html> and persist
   useEffect(() => {
     try {
       const root = document.documentElement;
@@ -897,6 +1047,7 @@ const App: React.FC = () => {
     setRedemptions((prev) => [item, ...prev]);
     setRedeemPick(null);
     setRedeemReceipt(item);
+
     await postToSheet({
       table: "redemptions",
       ts: new Date(item.ts).toISOString(),
@@ -965,14 +1116,18 @@ const App: React.FC = () => {
     <div style={{ minHeight: "100vh", background: BRAND.bg, display: "flex", flexDirection: "column", color: BRAND.text }} dir={dir}>
       <style>{`@keyframes rb-gradient-move {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}`}</style>
 
+      {/* Header */}
       <header style={{ position: "sticky", top: 0, zIndex: 20, height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", background: "#ffffffcc", backdropFilter: "saturate(1.8) blur(8px)", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
           <BrandLogo />
           RentBack
         </div>
+
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* quick language toggle in header */}
+          {/* Header language pill */}
           <Pill onClick={() => setLang((p) => (p === "en" ? "ur" : "en"))}>{t.langNames[lang === "en" ? "ur" : "en"]}</Pill>
+
+          {/* Menu button */}
           <button onClick={() => setMenuOpen(true)} aria-label="Open menu" style={{ border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface, borderRadius: 10, padding: 8 }}>
             <div style={{ width: 18, height: 2, background: "#111", marginBottom: 3 }} />
             <div style={{ width: 18, height: 2, background: "#111", marginBottom: 3 }} />
@@ -981,8 +1136,10 @@ const App: React.FC = () => {
         </div>
       </header>
 
+      {/* Main */}
       <main style={{ flex: 1, padding: 14, paddingBottom: 80 }}>{content}</main>
 
+      {/* Bottom Nav */}
       <nav style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: BRAND.surface, borderTop: "1px solid rgba(0,0,0,0.06)", height: 64, display: "grid", gridTemplateColumns: "repeat(5, 1fr)", alignItems: "center" }}>
         {[
           { key: "home", label: t.nav.home },
@@ -991,32 +1148,32 @@ const App: React.FC = () => {
           { key: "support", label: t.nav.support },
           { key: "profile", label: t.nav.profile },
         ].map((it) => (
-          <button key={it.key} onClick={() => setTab(it.key as Tab)} style={{ height: "100%", background: "transparent", border: "none", cursor: "pointer", fontWeight: tab === it.key ? 700 : 500, color: tab === it.key ? BRAND.primary : "#0f172a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+          <button
+            key={it.key}
+            onClick={() => setTab(it.key as Tab)}
+            style={{
+              height: "100%",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: tab === it.key ? 700 : 500,
+              color: tab === it.key ? BRAND.primary : "#0f172a",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+            }}
+          >
             <span>{it.label}</span>
           </button>
         ))}
       </nav>
 
-      {/* Drawer overlay: force LTR so it always anchors to the RIGHT, even when app dir=rtl */}
+      {/* Right Drawer */}
       {menuOpen ? (
-        <div role="dialog" aria-modal="true" onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.35)", display: "flex", justifyContent: "flex-end", direction: "ltr" }}>
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: 320,
-              maxWidth: "90%",
-              height: "100%",
-              background: BRAND.surface,
-              padding: 14,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              boxShadow: "-8px 0 24px rgba(0,0,0,0.15)",
-              overflowY: "auto",              // ← makes drawer scrollable so the Lang section is visible
-              WebkitOverflowScrolling: "touch",
-              paddingBottom: 24,
-            }}
-          >
+        <div role="dialog" aria-modal="true" onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.35)", display: "flex", justifyContent: "flex-end" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 320, maxWidth: "90%", height: "100%", background: BRAND.surface, padding: 14, display: "flex", flexDirection: "column", gap: 10, boxShadow: "-8px 0 24px rgba(0,0,0,0.15)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontWeight: 700 }}>{t.menu}</div>
               <button onClick={() => setMenuOpen(false)} aria-label="Close" style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}>✕</button>
@@ -1031,24 +1188,24 @@ const App: React.FC = () => {
             <Row onClick={() => { window.open("/privacy", "_blank"); }}>{t.drawer.privacy}</Row>
             <Row onClick={() => { window.open("/terms", "_blank"); }}>{t.drawer.terms}</Row>
 
-            {/* Put language controls higher and obvious */}
-            <div style={{ height: 6 }} />
-            <SectionTitle title={t.drawer.lang} />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Pill onClick={() => setLang("en")}>{lang === "en" ? `● ${t.langNames.en}` : t.langNames.en}</Pill>
-              <Pill onClick={() => setLang("ur")}>{lang === "ur" ? `● ${t.langNames.ur}` : t.langNames.ur}</Pill>
-            </div>
-
             <div style={{ height: 6 }} />
             <SectionTitle title={t.drawer.role} subtitle={t.drawer.roleHint} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Pill onClick={() => setRole("tenant")}>{role === "tenant" ? `● ${t.drawer.tenant}` : t.drawer.tenant}</Pill>
               <Pill onClick={() => setRole("landlord")}>{role === "landlord" ? `● ${t.drawer.landlord}` : t.drawer.landlord}</Pill>
             </div>
+
+            <div style={{ height: 6 }} />
+            <SectionTitle title={t.drawer.lang} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <Pill onClick={() => setLang("en")}>{lang === "en" ? `● ${t.langNames.en}` : t.langNames.en}</Pill>
+              <Pill onClick={() => setLang("ur")}>{lang === "ur" ? `● ${t.langNames.ur}` : t.langNames.ur}</Pill>
+            </div>
           </div>
         </div>
       ) : null}
 
+      {/* Modals */}
       {receiptFor ? <PaymentReceiptModal t={t} payment={receiptFor} onClose={() => setReceiptFor(null)} /> : null}
       {redeemPick ? <RedeemModal t={t} reward={redeemPick} onClose={() => setRedeemPick(null)} onConfirm={onConfirmRedeem} /> : null}
       {redeemReceipt ? <RedeemReceiptModal t={t} item={redeemReceipt} onClose={() => setRedeemReceipt(null)} /> : null}
