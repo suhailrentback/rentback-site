@@ -1,22 +1,36 @@
+// Pure server page – no client code, no event handlers
+export const dynamic = "force-static";
+
 export const metadata = {
   title: "Privacy Policy — RentBack",
-  description: "How RentBack handles your information in Pakistan.",
+  description: "How RentBack handles your data in Pakistan.",
 };
 
 export default function PrivacyPage() {
   return (
-    <main style={{ maxWidth: 840, margin: "2rem auto", padding: "0 1rem", lineHeight: 1.6 }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: ".25rem" }}>Privacy Policy</h1>
-      <div style={{ opacity: .7, marginBottom: "1rem" }}>Last updated: {new Date().toLocaleDateString("en-PK", { year:"numeric", month:"long", day:"numeric" })}</div>
+    <main className="mx-auto max-w-3xl px-4 py-12 prose prose-zinc dark:prose-invert">
+      <h1>Privacy Policy</h1>
+      <p><em>Last updated: 3 September 2025</em></p>
+
       <p>
-        We handle your information under Pakistani law and relevant SBP directives. We minimize data
-        collection, encrypt in transit, and work with licensed partners for payments. Contact: <a href="mailto:help@rentback.app">help@rentback.app</a>.
+        We handle your information under Pakistani law and relevant SBP directives.
+        We collect only what’s needed to operate RentBack and improve the service.
       </p>
-      <p>
-        This static page is non-interactive for reliability. For a printable version, use your browser’s
-        <em> Print / Save as PDF</em>.
-      </p>
-      <p><a href="/">← Back to Home</a></p>
+
+      <h2>What we collect</h2>
+      <ul>
+        <li>Contact details (email, phone), city, language.</li>
+        <li>Technical data (limited analytics if you consent).</li>
+      </ul>
+
+      <h2>How we use it</h2>
+      <ul>
+        <li>Waitlist and product updates you request.</li>
+        <li>Service operations, fraud prevention, and support.</li>
+      </ul>
+
+      <h2>Contact</h2>
+      <p>help@rentback.app</p>
     </main>
   );
 }
