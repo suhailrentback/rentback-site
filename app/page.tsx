@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import SandboxBanner from "../components/SandboxBanner";
+import SandboxBanner from "./components/SandboxBanner";
 
 /**
  * RentBack — Landing Page (for rentback.app)
@@ -9,7 +9,7 @@ import SandboxBanner from "../components/SandboxBanner";
  * - Language persisted to localStorage ("rb-lang")
  * - Simple hero + features + waitlist form (Email, Phone, City)
  * - Form posts to Google Apps Script endpoint (no-cors)
- * - Footer with Privacy / Terms / Rewards / Complaints / Founder (modal), and Language toggle
+ * - Footer with Privacy / Terms / Founder (modal), Complaints, and Language toggle
  * - No extra deps (inline styles only)
  */
 
@@ -64,9 +64,8 @@ const copy: Record<"en" | "ur", I18n> = {
     footer: {
       privacy: "Privacy",
       terms: "Terms",
-      rewards: "Rewards T&Cs",
-      complaints: "Complaints",
       founder: "Founder",
+      complaints: "Complaints",
       lang: "Language",
       urdu: "اردو",
       english: "English",
@@ -107,9 +106,8 @@ const copy: Record<"en" | "ur", I18n> = {
     footer: {
       privacy: "پرائیویسی",
       terms: "شرائط",
-      rewards: "ریوارڈز کی شرائط",
-      complaints: "شکایات",
       founder: "بانی",
+      complaints: "شکایات",
       lang: "زبان",
       urdu: "اردو",
       english: "English",
@@ -119,22 +117,47 @@ const copy: Record<"en" | "ur", I18n> = {
 };
 
 // ---------- Helpers ----------
-const isValidPkMobile = (s: string) => /^(?:\+?92)?0?3[0-9]{9}$/.test(s.trim());
+const formatPKR = (n: number) =>
+  new Intl.NumberFormat("en-PK", {
+    style: "currency",
+    currency: "PKR",
+    maximumFractionDigits: 0,
+  }).format(n);
+
+// Simple PK mobile validator
+const isValidPkMobile = (s: string) =>
+  /^(?:\+?92)?0?3[0-9]{9}$/.test(s.trim());
+
+// Normalize PK phone to +923… format
 const normalizePkPhone = (raw: string) => {
   let s = (raw || "").replace(/[^\d+]/g, "");
   if (s.startsWith("00")) s = "+" + s.slice(2);
   if (s.startsWith("92")) s = "+92" + s.slice(2);
   const digits = s.replace(/\D/g, "");
   if (s.startsWith("+92")) return ("+92" + digits.slice(2)).slice(0, 13);
-  if (digits.length >= 11 && digits[0] === "0" && digits[1] === "3") return "+92" + digits.slice(1, 11);
+  if (digits.length >= 11 && digits[0] === "0" && digits[1] === "3")
+    return "+92" + digits.slice(1, 11);
   if (digits.length === 10 && digits[0] === "3") return "+92" + digits.slice(0, 10);
   let ten = digits.replace(/^0+/, "").slice(0, 10);
   return "+92" + ten;
 };
 
 // ---------- Visuals ----------
-const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({ size = 20, stroke = BRAND.primary }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({
+  size = 20,
+  stroke = BRAND.primary,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={stroke}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
     <path d="M3 11.5L12 4l9 7.5" />
     <path d="M5 10v9h14v-9" />
   </svg>
@@ -161,10 +184,19 @@ const CardVisual: React.FC = () => (
       style={{
         position: "absolute",
         inset: 0,
-        background: "linear-gradient( to bottom right, rgba(255,255,255,0.14), rgba(255,255,255,0) )",
+        background:
+          "linear-gradient( to bottom right, rgba(255,255,255,0.14), rgba(255,255,255,0) )",
       }}
     />
-    <div style={{ position: "absolute", inset: 0, padding: 18, display: "flex", flexDirection: "column" }}>
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        padding: 18,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
           <BrandLogo size={22} stroke="#0f172a" />
@@ -172,7 +204,13 @@ const CardVisual: React.FC = () => (
         </div>
         <span style={{ fontSize: 12, opacity: 0.9, color: "#0f172a" }}>VIRTUAL • Debit</span>
       </div>
-      <div style={{ marginTop: "auto", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: 1 }}>
+      <div
+        style={{
+          marginTop: "auto",
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          letterSpacing: 1,
+        }}
+      >
         <div style={{ fontSize: 18, fontWeight: 600, color: "#0f172a" }}>**** **** **** 0007</div>
         <div style={{ display: "flex", gap: 20, marginTop: 6, fontSize: 12, color: "#0f172a" }}>
           <span>Exp 12/27</span>
@@ -194,12 +232,14 @@ export default function LandingPage() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("rb-lang");
-      if (saved === "en" || saved === "ur") setLang(saved);
+      if (saved === "en" || saved === "ur") setLang(saved as any);
     } catch {}
   }, []);
   // persist on change
   useEffect(() => {
-    try { localStorage.setItem("rb-lang", lang); } catch {}
+    try {
+      localStorage.setItem("rb-lang", lang);
+    } catch {}
   }, [lang]);
 
   // reflect on <html>
@@ -220,7 +260,8 @@ export default function LandingPage() {
   const [err, setErr] = useState<string | null>(null);
 
   // Endpoint (Google Apps Script)
-  const ENDPOINT = "https://script.google.com/macros/s/AKfycbwCqHgI_5wkWTTorP_803gULbkVDuhLLs_lQnKN9k5dl1NPJx7XKEHj8IOcIyIENZgm/exec";
+  const ENDPOINT =
+    "https://script.google.com/macros/s/AKfycbwCqHgI_5wkWTTorP_803gULbkVDuhLLs_lQnKN9k5dl1NPJx7XKEHj8IOcIyIENZgm/exec";
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,13 +275,21 @@ export default function LandingPage() {
     const emailOk = /.+@.+\..+/.test(em);
     const phoneOk = isValidPkMobile(ph);
 
-    if (!emailOk) { setErr(t.errors.email); return; }
-    if (!phoneOk) { setErr(t.errors.phone); return; }
+    if (!emailOk) {
+      setErr(t.errors.email);
+      return;
+    }
+    if (!phoneOk) {
+      setErr(t.errors.phone);
+      return;
+    }
 
     setLoading(true);
     try {
       // UTM (best-effort)
-      let utmSource = "", utmMedium = "", utmCampaign = "";
+      let utmSource = "",
+        utmMedium = "",
+        utmCampaign = "";
       try {
         const params = new URLSearchParams(window.location.search);
         utmSource = params.get("utm_source") || "";
@@ -269,7 +318,9 @@ export default function LandingPage() {
       });
 
       setSubmitted(true);
-      setEmail(""); setPhone(""); setCity("");
+      setEmail("");
+      setPhone("");
+      setCity("");
     } catch (e) {
       setErr(lang === "ur" ? "عارضی مسئلہ۔ دوبارہ کوشش کریں۔" : "Temporary issue. Please try again.");
     } finally {
@@ -280,15 +331,24 @@ export default function LandingPage() {
   return (
     <div dir={dir} style={{ minHeight: "100vh", background: BRAND.bg, color: BRAND.text }}>
       {/* gradient animation keyframes */}
-      <style>{`@keyframes rb-gradient-move {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}`}</style>
+      <style>
+        {
+          "@keyframes rb-gradient-move {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}"
+        }
+      </style>
 
       {/* Header */}
       <header
         style={{
           position: "sticky",
-          top: 0, zIndex: 10, height: 60,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 16px", background: "#ffffffcc",
+          top: 0,
+          zIndex: 10,
+          height: 60,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 16px",
+          background: "#ffffffcc",
           backdropFilter: "saturate(1.8) blur(8px)",
           borderBottom: "1px solid rgba(0,0,0,0.06)",
         }}
@@ -298,8 +358,13 @@ export default function LandingPage() {
           {t.appName}
           <span
             style={{
-              marginLeft: 8, fontSize: 11, padding: "4px 8px", borderRadius: 999,
-              background: "#fffbeb", color: "#92400e", border: "1px solid rgba(146,64,14,0.15)",
+              marginLeft: 8,
+              fontSize: 11,
+              padding: "4px 8px",
+              borderRadius: 999,
+              background: "#fffbeb",
+              color: "#92400e",
+              border: "1px solid rgba(146,64,14,0.15)",
             }}
           >
             {t.statusPill}
@@ -308,8 +373,8 @@ export default function LandingPage() {
         <div />
       </header>
 
-      {/* Sandbox banner (NEW) */}
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 16px" }}>
+      {/* Sandbox banner */}
+      <div style={{ maxWidth: 1120, margin: "10px auto 0", padding: "0 16px" }}>
         <SandboxBanner lang={lang} />
       </div>
 
@@ -334,13 +399,26 @@ export default function LandingPage() {
             <form
               onSubmit={onSubmit}
               style={{
-                marginTop: 16, padding: 14, borderRadius: 14,
-                border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface,
-                boxShadow: "0 1px 0 rgba(0,0,0,0.02)", display: "grid", gap: 8, maxWidth: 520,
+                marginTop: 16,
+                padding: 14,
+                borderRadius: 14,
+                border: "1px solid rgba(0,0,0,0.06)",
+                background: BRAND.surface,
+                boxShadow: "0 1px 0 rgba(0,0,0,0.02)",
+                display: "grid",
+                gap: 8,
+                maxWidth: 520,
               }}
             >
               {submitted ? (
-                <div style={{ padding: 12, borderRadius: 12, background: "#ecfdf5", border: `1px solid ${BRAND.ring}` }}>
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    background: "#ecfdf5",
+                    border: `1px solid ${BRAND.ring}`,
+                  }}
+                >
                   <div style={{ fontWeight: 700 }}>{t.successTitle}</div>
                   <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{t.successBody}</div>
                 </div>
@@ -348,28 +426,60 @@ export default function LandingPage() {
                 <>
                   <div style={{ display: "grid", gap: 8 }}>
                     <input
-                      value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.email} inputMode="email"
-                      style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={t.email}
+                      inputMode="email"
+                      style={{
+                        padding: 12,
+                        borderRadius: 12,
+                        border: "1px solid rgba(0,0,0,0.1)",
+                        background: BRAND.surface,
+                      }}
                     />
                     <input
-                      value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={(e) => setPhone(normalizePkPhone(e.target.value))}
-                      placeholder={t.phone} inputMode="tel" id="rb-wa"
-                      style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      onBlur={(e) => setPhone(normalizePkPhone(e.target.value))}
+                      placeholder={t.phone}
+                      inputMode="tel"
+                      id="rb-wa"
+                      style={{
+                        padding: 12,
+                        borderRadius: 12,
+                        border: "1px solid rgba(0,0,0,0.1)",
+                        background: BRAND.surface,
+                      }}
                     />
                     <input
-                      value={city} onChange={(e) => setCity(e.target.value)} placeholder={t.city}
-                      style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }}
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder={t.city}
+                      style={{
+                        padding: 12,
+                        borderRadius: 12,
+                        border: "1px solid rgba(0,0,0,0.1)",
+                        background: BRAND.surface,
+                      }}
                     />
                   </div>
 
-                  {err ? <div style={{ color: "#b91c1c", fontSize: 13, marginTop: 4 }}>{err}</div> : null}
+                  {err ? (
+                    <div style={{ color: "#b91c1c", fontSize: 13, marginTop: 4 }}>{err}</div>
+                  ) : null}
 
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
-                      type="submit" disabled={loading}
+                      type="submit"
+                      disabled={loading}
                       style={{
-                        padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`,
-                        background: BRAND.primary, color: "#fff", fontWeight: 700, opacity: loading ? 0.7 : 1,
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        border: `1px solid ${BRAND.ring}`,
+                        background: BRAND.primary,
+                        color: "#fff",
+                        fontWeight: 700,
+                        opacity: loading ? 0.7 : 1,
                       }}
                     >
                       {t.join}
@@ -388,9 +498,23 @@ export default function LandingPage() {
         {/* How it works */}
         <section style={{ marginTop: 24 }}>
           <div style={{ fontWeight: 800, marginBottom: 10 }}>{t.howTitle}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 10,
+            }}
+          >
             {t.how.map((x: any, i: number) => (
-              <div key={i} style={{ padding: 14, borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface }}>
+              <div
+                key={i}
+                style={{
+                  padding: 14,
+                  borderRadius: 14,
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  background: BRAND.surface,
+                }}
+              >
                 <div style={{ fontWeight: 700 }}>{x.t}</div>
                 <div style={{ opacity: 0.8, fontSize: 13, marginTop: 6 }}>{x.d}</div>
               </div>
@@ -401,9 +525,23 @@ export default function LandingPage() {
         {/* Why RentBack */}
         <section style={{ marginTop: 24 }}>
           <div style={{ fontWeight: 800, marginBottom: 10 }}>{t.whyTitle}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 10,
+            }}
+          >
             {t.why.map((x: any, i: number) => (
-              <div key={i} style={{ padding: 14, borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface }}>
+              <div
+                key={i}
+                style={{
+                  padding: 14,
+                  borderRadius: 14,
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  background: BRAND.surface,
+                }}
+              >
                 <div style={{ fontWeight: 700 }}>{x.t}</div>
                 <div style={{ opacity: 0.8, fontSize: 13, marginTop: 6 }}>{x.d}</div>
               </div>
@@ -415,28 +553,41 @@ export default function LandingPage() {
       {/* Footer */}
       <footer
         style={{
-          marginTop: 24, padding: 16,
-          borderTop: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface,
+          marginTop: 24,
+          padding: 16,
+          borderTop: "1px solid rgba(0,0,0,0.06)",
+          background: BRAND.surface,
         }}
       >
         <div
           style={{
-            maxWidth: 1120, margin: "0 auto", display: "flex", flexWrap: "wrap",
-            gap: 10, alignItems: "center", justifyContent: "space-between",
+            maxWidth: 1120,
+            margin: "0 auto",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
           <div style={{ opacity: 0.8, fontSize: 13, maxWidth: 700 }}>{t.footerNote}</div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <button onClick={() => window.open(`/legal/privacy?lang=${lang}`, "_blank")} style={linkBtn}>
+            <button
+              onClick={() => window.open(`/legal/privacy?lang=${lang}`, "_blank")}
+              style={linkBtn}
+            >
               {t.footer.privacy}
             </button>
-            <button onClick={() => window.open(`/legal/terms?lang=${lang}`, "_blank")} style={linkBtn}>
+            <button
+              onClick={() => window.open(`/legal/terms?lang=${lang}`, "_blank")}
+              style={linkBtn}
+            >
               {t.footer.terms}
             </button>
-            <button onClick={() => window.open(`/legal/rewards?lang=${lang}`, "_blank")} style={linkBtn}>
-              {t.footer.rewards}
-            </button>
-            <button onClick={() => window.open(`/legal/complaints?lang=${lang}`, "_blank")} style={linkBtn}>
+            <button
+              onClick={() => window.open(`/legal/complaints?lang=${lang}`, "_blank")}
+              style={linkBtn}
+            >
               {t.footer.complaints}
             </button>
             <FounderButton lang={lang} t={t} />
@@ -505,16 +656,25 @@ const FounderButton: React.FC<{ lang: "en" | "ur"; t: I18n }> = ({ lang, t }) =>
           aria-modal="true"
           onClick={() => setOpen(false)}
           style={{
-            position: "fixed", inset: 0, zIndex: 50,
-            background: "rgba(0,0,0,0.35)", display: "grid", placeItems: "center", padding: 16,
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            background: "rgba(0,0,0,0.35)",
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "100%", maxWidth: 420, background: BRAND.surface,
-              borderRadius: 16, border: "1px solid rgba(0,0,0,0.08)",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.25)", padding: 16,
+              width: "100%",
+              maxWidth: 420,
+              background: BRAND.surface,
+              borderRadius: 16,
+              border: "1px solid rgba(0,0,0,0.08)",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+              padding: 16,
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
