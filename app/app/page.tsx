@@ -3,12 +3,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FLAGS } from "../../lib/flags";
 
 /**
- * RentBack — Unified App Prototype (single Preview)
- * Phase 0 adds:
- * - Sandbox ribbon & /legal links
- * - Language persistence (localStorage)
- * - Minimal consent notice (analytics opt-in placeholder)
- * - Feature flags (RB_DEMO_MODE, ENABLE_REWARDS, ENABLE_REAL_PAYMENTS)
+ * RentBack — Unified App Prototype
+ * Phase 1 adds:
+ * - Client-side rate limits for Payment Create & Reward Redeem
+ * - Persistent Event Log (localStorage) with CSV/JSON export
+ * - QA Panel overlay: stats, flags, UTM/UA, rate-limit snapshot, seed/reset, network delay & force-fail for Sheet logging
  */
 
 // ---------- Brand ----------
@@ -63,8 +62,6 @@ type Redemption = {
 };
 
 type Utm = { source: string; medium: string; campaign: string };
-
-// Structural i18n type so both EN and UR fit (no literal union errors)
 type I18n = { [key: string]: any };
 
 // ---------- Utils ----------
@@ -96,43 +93,152 @@ const getUA = () => {
   }
 };
 
-const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({
-  size = 20,
-  stroke = BRAND.primary,
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke={stroke}
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-  >
+// ---------- QA Hooks (Phase 1) ----------
+type QAConfig = { netDelayMs: number; failSheet: boolean };
+const QA_DEFAULT: QAConfig = { netDelayMs: 0, failSheet: false };
+
+function loadQAConfig(): QAConfig {
+  try {
+    const raw = localStorage.getItem("rb-qa");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { ...QA_DEFAULT };
+}
+
+function saveQAConfig(cfg: QAConfig) {
+  try {
+    localStorage.setItem("rb-qa", JSON.stringify(cfg));
+  } catch {}
+}
+
+// ---------- Rate Limits (Phase 1) ----------
+type RLRule = { perMinute: number; perDay: number };
+const RL_RULES: Record<string, RLRule> = {
+  paymentCreate: { perMinute: 5, perDay: 30 },
+  redeem: { perMinute: 5, perDay: 30 },
+};
+
+function rlKey(key: keyof typeof RL_RULES) {
+  return `rb-rl-${key}`;
+}
+function getRLNow() {
+  return Date.now();
+}
+function rlRead(key: keyof typeof RL_RULES): number[] {
+  try {
+    const raw = localStorage.getItem(rlKey(key));
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+function rlWrite(key: keyof typeof RL_RULES, arr: number[]) {
+  try {
+    localStorage.setItem(rlKey(key), JSON.stringify(arr));
+  } catch {}
+}
+function rlSnapshot(key: keyof typeof RL_RULES) {
+  const arr = rlRead(key);
+  const now = getRLNow();
+  const oneMinAgo = now - 60_000;
+  const oneDayAgo = now - 86_400_000;
+  const lastMin = arr.filter((t) => t > oneMinAgo).length;
+  const lastDay = arr.filter((t) => t > oneDayAgo).length;
+  const rule = RL_RULES[key];
+  return { lastMin, lastDay, limitMin: rule.perMinute, limitDay: rule.perDay };
+}
+function checkRateLimit(key: keyof typeof RL_RULES): { ok: boolean; message?: string } {
+  const rule = RL_RULES[key];
+  const now = getRLNow();
+  const oneMinAgo = now - 60_000;
+  const oneDayAgo = now - 86_400_000;
+  const arr = rlRead(key).filter((t) => t > oneDayAgo);
+  const perMinCount = arr.filter((t) => t > oneMinAgo).length;
+  if (perMinCount >= rule.perMinute) {
+    return { ok: false, message: "Rate limit: try again in a minute." };
+  }
+  if (arr.length >= rule.perDay) {
+    return { ok: false, message: "Daily limit reached for today." };
+  }
+  arr.push(now);
+  rlWrite(key, arr);
+  return { ok: true };
+}
+function rlResetAll() {
+  Object.keys(RL_RULES).forEach((k) => {
+    try {
+      localStorage.removeItem(rlKey(k as keyof typeof RL_RULES));
+    } catch {}
+  });
+}
+
+// ---------- Event Log (Phase 1) ----------
+type EventKind =
+  | "lang_change"
+  | "role_change"
+  | "payment_create"
+  | "payment_mark_sent"
+  | "payment_refund"
+  | "redeem_request"
+  | "redeem_status"
+  | "sheet_log_ok"
+  | "sheet_log_fail";
+
+type EventItem = {
+  id: string;
+  ts: number;
+  kind: EventKind;
+  ref?: string;
+  meta?: Record<string, any>;
+};
+
+function newEvent(kind: EventKind, meta?: Record<string, any>): EventItem {
+  return {
+    id: `${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
+    ts: Date.now(),
+    kind,
+    ref: meta?.ref,
+    meta,
+  };
+}
+
+function eventsToCSV(events: EventItem[]) {
+  const headers = ["ts", "kind", "ref", "meta"];
+  const rows = events.map((e) => [
+    new Date(e.ts).toISOString(),
+    e.kind,
+    e.ref || "",
+    JSON.stringify(e.meta || {}),
+  ]);
+  return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+}
+
+function downloadAs(filename: string, content: string, type = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------- UI bits ----------
+const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({ size = 20, stroke = BRAND.primary }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d="M3 11.5L12 4l9 7.5" />
     <path d="M5 10v9h14v-9" />
   </svg>
 );
 
-const SectionTitle: React.FC<{ title: string; subtitle?: string }> = ({
-  title,
-  subtitle,
-}) => (
+const SectionTitle: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
   <div style={{ marginBottom: 12 }}>
     <div style={{ fontWeight: 700, fontSize: 16 }}>{title}</div>
-    {subtitle ? (
-      <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>{subtitle}</div>
-    ) : null}
+    {subtitle ? <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>{subtitle}</div> : null}
   </div>
 );
 
-const Row: React.FC<{
-  children: React.ReactNode;
-  right?: React.ReactNode;
-  onClick?: () => void;
-}> = ({ children, right, onClick }) => {
+const Row: React.FC<{ children: React.ReactNode; right?: React.ReactNode; onClick?: () => void }> = ({ children, right, onClick }) => {
   const Comp: any = onClick ? "button" : "div";
   return (
     <Comp
@@ -157,10 +263,7 @@ const Row: React.FC<{
   );
 };
 
-const Pill: React.FC<{ children: React.ReactNode; onClick?: () => void }> = ({
-  children,
-  onClick,
-}) => (
+const Pill: React.FC<{ children: React.ReactNode; onClick?: () => void }> = ({ children, onClick }) => (
   <button
     onClick={onClick}
     style={{
@@ -199,54 +302,20 @@ const CardVisual: React.FC = () => (
       style={{
         position: "absolute",
         inset: 0,
-        background:
-          "linear-gradient( to bottom right, rgba(255,255,255,0.14), rgba(255,255,255,0) )",
+        background: "linear-gradient( to bottom right, rgba(255,255,255,0.14), rgba(255,255,255,0) )",
       }}
     />
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        padding: 18,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
+    <div style={{ position: "absolute", inset: 0, padding: 18, display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
           <BrandLogo size={22} stroke="#0f172a" />
           <span>RentBack</span>
         </div>
-        <span style={{ fontSize: 12, opacity: 0.9, color: "#0f172a" }}>
-          VIRTUAL • Debit
-        </span>
+        <span style={{ fontSize: 12, opacity: 0.9, color: "#0f172a" }}>VIRTUAL • Debit</span>
       </div>
-
-      <div
-        style={{
-          marginTop: "auto",
-          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-          letterSpacing: 1,
-        }}
-      >
-        <div style={{ fontSize: 18, fontWeight: 600, color: "#0f172a" }}>
-          **** **** **** 0007
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 20,
-            marginTop: 6,
-            fontSize: 12,
-            color: "#0f172a",
-          }}
-        >
+      <div style={{ marginTop: "auto", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: 1 }}>
+        <div style={{ fontSize: 18, fontWeight: 600, color: "#0f172a" }}>**** **** **** 0007</div>
+        <div style={{ display: "flex", gap: 20, marginTop: 6, fontSize: 12, color: "#0f172a" }}>
           <span>Exp 12/27</span>
           <span>PKR</span>
         </div>
@@ -292,6 +361,7 @@ const copy = {
       tenant: "Tenant",
       landlord: "Landlord",
       lang: "Language",
+      qa: "QA Panel",
     },
     home: {
       headlineTenant: "Your rent, organized",
@@ -394,7 +464,7 @@ const copy = {
   },
   ur: {
     appName: "RentBack",
-    menu: "می뉴",
+    menu: "مینیو",
     nav: { home: "ہوم", pay: "ادائیگی", rewards: "انعامات", support: "مدد", profile: "پروفائل" },
     drawer: {
       explore: "ایکسپلور",
@@ -411,6 +481,7 @@ const copy = {
       tenant: "کرایہ دار",
       landlord: "مالک مکان",
       lang: "زبان",
+      qa: "QA پینل",
     },
     home: {
       headlineTenant: "آپ کا کرایہ، منظم",
@@ -485,11 +556,7 @@ const copy = {
     status: {
       title: "ریگولیٹری اسٹیٹس",
       subtitle: "SBP سینڈ باکس — تیاری اور اپ ڈیٹس",
-      items: [
-        "تیاری مکمل (مواد اور پارٹنر آؤٹ ریچ)",
-        "ڈرافٹ درخواست تیار",
-        "سینڈ باکس جمع کرانے کی ونڈو کا انتظار",
-      ],
+      items: ["تیاری مکمل (مواد اور پارٹنر آؤٹ ریچ)", "ڈرافٹ درخواست تیار", "سینڈ باکس جمع کرانے کی ونڈو کا انتظار"],
     },
     security: {
       title: "سیکورٹی اور پرائیویسی",
@@ -505,17 +572,19 @@ const copy = {
     about: {
       title: "RentBack کے بارے میں",
       sub: "کرائے کو انعامات میں بدلنا",
-      body:
-        "RentBack کرایہ داروں کو سہولت سے ادائیگی اور انعامات دیتا ہے اور مالکان کو آمدنی پر واضح نظر فراہم کرتا ہے۔",
+      body: "RentBack کرایہ داروں کو سہولت سے ادائیگی اور انعامات دیتا ہے اور مالکان کو آمدنی پر واضح نظر فراہم کرتا ہے۔",
     },
     founder: { title: "بانی", contact: "رابطہ" },
     langNames: { en: "English", ur: "اردو" },
   },
 } as const;
 
-// ---------- Sheet logging ----------
-async function postToSheet(payload: Record<string, any>) {
+// ---------- Sheet logging (Phase 1 respects QA delay/fail) ----------
+async function postToSheet(payload: Record<string, any>, qaCfg: QAConfig) {
   try {
+    if (qaCfg.netDelayMs > 0) await new Promise((r) => setTimeout(r, qaCfg.netDelayMs));
+    if (qaCfg.failSheet) throw new Error("QA: forced failure");
+
     const endpoint = (window as any).RB_PAYMENTS_ENDPOINT as string | undefined;
     if (!endpoint) return;
     const key = (window as any).RB_PAYMENTS_SECRET as string | undefined;
@@ -529,67 +598,30 @@ async function postToSheet(payload: Record<string, any>) {
       },
       body: JSON.stringify(body),
     });
-  } catch {}
+  } catch (e) {
+    throw e;
+  }
 }
 
 // ---------- Modals ----------
-const PaymentReceiptModal: React.FC<{
-  t: I18n;
-  payment: Payment;
-  onClose: () => void;
-}> = ({ t, payment, onClose }) => {
+const PaymentReceiptModal: React.FC<{ t: I18n; payment: Payment; onClose: () => void }> = ({ t, payment, onClose }) => {
   const date = new Date(payment.ts).toLocaleString("en-PK");
   return (
     <div
       role="dialog"
       aria-modal="true"
       onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 70,
-        background: "rgba(0,0,0,0.4)",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
-      }}
+      style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.4)", display: "grid", placeItems: "center", padding: 16 }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 720,
-          background: BRAND.surface,
-          borderRadius: 16,
-          border: "1px solid rgba(0,0,0,0.08)",
-          boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
-        }}
+        style={{ width: "100%", maxWidth: 720, background: BRAND.surface, borderRadius: 16, border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 20px 40px rgba(0,0,0,0.25)" }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: 14,
-            borderBottom: "1px solid rgba(0,0,0,0.06)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontWeight: 700,
-              color: BRAND.primary,
-            }}
-          >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 14, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
             <BrandLogo /> {t.pay.receipt}
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}
-          >
+          <button onClick={onClose} aria-label="Close" style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}>
             ✕
           </button>
         </div>
@@ -620,29 +652,10 @@ const PaymentReceiptModal: React.FC<{
           </div>
           <div style={{ marginTop: 12, opacity: 0.7, fontSize: 12 }}>{t.pay.demoNote}</div>
           <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-            <button
-              onClick={() => window.print()}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: `1px solid ${BRAND.ring}`,
-                background: BRAND.surface,
-                fontWeight: 600,
-              }}
-            >
+            <button onClick={() => window.print()} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 600 }}>
               {t.pay.print}
             </button>
-            <button
-              onClick={onClose}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: `1px solid ${BRAND.ring}`,
-                background: BRAND.primary,
-                color: "#fff",
-                fontWeight: 700,
-              }}
-            >
+            <button onClick={onClose} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>
               {t.pay.close}
             </button>
           </div>
@@ -652,40 +665,19 @@ const PaymentReceiptModal: React.FC<{
   );
 };
 
-const RedeemModal: React.FC<{
-  t: I18n;
-  reward: (typeof rewardsCatalog)[number] | null;
-  onClose: () => void;
-  onConfirm: (denom: number) => void;
-}> = ({ t, reward, onClose, onConfirm }) => {
+const RedeemModal: React.FC<{ t: I18n; reward: (typeof rewardsCatalog)[number] | null; onClose: () => void; onConfirm: (denom: number) => void }> = ({
+  t,
+  reward,
+  onClose,
+  onConfirm,
+}) => {
   const [denom, setDenom] = useState<number | null>(null);
   if (!reward) return null;
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 70,
-        background: "rgba(0,0,0,0.4)",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
-      }}
-    >
+    <div role="dialog" aria-modal="true" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.4)", display: "grid", placeItems: "center", padding: 16 }}>
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 520,
-          background: BRAND.surface,
-          borderRadius: 16,
-          border: "1px solid rgba(0,0,0,0.08)",
-          boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
-          padding: 16,
-        }}
+        style={{ width: "100%", maxWidth: 520, background: BRAND.surface, borderRadius: 16, border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 20px 40px rgba(0,0,0,0.25)", padding: 16 }}
       >
         <div style={{ fontWeight: 700, marginBottom: 10 }}>
           {t.rewards.choose}: {reward.title}
@@ -708,16 +700,7 @@ const RedeemModal: React.FC<{
           ))}
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: `1px solid ${BRAND.ring}`,
-              background: BRAND.surface,
-              fontWeight: 600,
-            }}
-          >
+          <button onClick={onClose} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 600 }}>
             {t.rewards.cancel}
           </button>
           <button
@@ -741,63 +724,19 @@ const RedeemModal: React.FC<{
   );
 };
 
-const RedeemReceiptModal: React.FC<{
-  t: I18n;
-  item: Redemption;
-  onClose: () => void;
-}> = ({ t, item, onClose }) => {
+const RedeemReceiptModal: React.FC<{ t: I18n; item: Redemption; onClose: () => void }> = ({ t, item, onClose }) => {
   const date = new Date(item.ts).toLocaleString("en-PK");
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 70,
-        background: "rgba(0,0,0,0.4)",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
-      }}
-    >
+    <div role="dialog" aria-modal="true" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.4)", display: "grid", placeItems: "center", padding: 16 }}>
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 720,
-          background: BRAND.surface,
-          borderRadius: 16,
-          border: "1px solid rgba(0,0,0,0.08)",
-          boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
-        }}
+        style={{ width: "100%", maxWidth: 720, background: BRAND.surface, borderRadius: 16, border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 20px 40px rgba(0,0,0,0.25)" }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: 14,
-            borderBottom: "1px solid rgba(0,0,0,0.06)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontWeight: 700,
-              color: BRAND.primary,
-            }}
-          >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 14, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
             <BrandLogo /> {t.rewards.receiptTitle}
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}
-          >
+          <button onClick={onClose} aria-label="Close" style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}>
             ✕
           </button>
         </div>
@@ -825,33 +764,12 @@ const RedeemReceiptModal: React.FC<{
             <div style={{ fontWeight: 600 }}>{item.status}</div>
           </div>
 
-          <div style={{ marginTop: 12, opacity: 0.7, fontSize: 12 }}>
-            Demo receipt — no real fulfillment performed.
-          </div>
+          <div style={{ marginTop: 12, opacity: 0.7, fontSize: 12 }}>Demo receipt — no real fulfillment performed.</div>
           <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-            <button
-              onClick={() => window.print()}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: `1px solid ${BRAND.ring}`,
-                background: BRAND.surface,
-                fontWeight: 600,
-              }}
-            >
+            <button onClick={() => window.print()} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 600 }}>
               {t.pay.print}
             </button>
-            <button
-              onClick={onClose}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: `1px solid ${BRAND.ring}`,
-                background: BRAND.primary,
-                color: "#fff",
-                fontWeight: 700,
-              }}
-            >
+            <button onClick={onClose} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>
               {t.pay.close}
             </button>
           </div>
@@ -862,20 +780,12 @@ const RedeemReceiptModal: React.FC<{
 };
 
 // ---------- Pages ----------
-const HomeTab: React.FC<{
-  t: I18n;
-  role: Role;
-  kyc: KycState;
-  goProfile: () => void;
-}> = ({ t, role, kyc, goProfile }) => {
-  const headline =
-    role === "tenant" ? t.home.headlineTenant : t.home.headlineLandlord;
+const HomeTab: React.FC<{ t: I18n; role: Role; kyc: KycState; goProfile: () => void }> = ({ t, role, kyc, goProfile }) => {
+  const headline = role === "tenant" ? t.home.headlineTenant : t.home.headlineLandlord;
   const sub = role === "tenant" ? t.home.subTenant : t.home.subLandlord;
-
   return (
     <div>
       <SectionTitle title={headline} subtitle={sub} />
-
       {kyc !== "verified" ? (
         <div
           style={{
@@ -891,30 +801,19 @@ const HomeTab: React.FC<{
         >
           <div>
             <div style={{ fontWeight: 700 }}>{t.home.kycTitle}</div>
-            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-              {t.home.kycSub}
-            </div>
+            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>{t.home.kycSub}</div>
           </div>
           <button
             onClick={goProfile}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: `1px solid ${BRAND.ring}`,
-              background: BRAND.primary,
-              color: "#fff",
-              fontWeight: 600,
-            }}
+            style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}
           >
             {t.home.kycCta}
           </button>
         </div>
       ) : null}
-
       <div style={{ height: 16 }} />
       <CardVisual />
       <div style={{ height: 16 }} />
-
       {role === "tenant" ? (
         <div style={{ display: "grid", gap: 10 }}>
           <Row right="PKR 120,000">{t.home.tenantRows.pending}</Row>
@@ -940,24 +839,18 @@ type PayTabProps = {
   role: Role;
   utm: Utm;
   onOpenReceipt: (p: Payment) => void;
+  logEvent: (e: EventItem) => void;
+  qaCfg: QAConfig;
 };
 
-const PayTab: React.FC<PayTabProps> = ({
-  t,
-  payments,
-  addPayment,
-  updatePayment,
-  role,
-  utm,
-  onOpenReceipt,
-}) => {
+const PayTab: React.FC<PayTabProps> = ({ t, payments, addPayment, updatePayment, role, utm, onOpenReceipt, logEvent, qaCfg }) => {
   const [amount, setAmount] = useState<string>("");
   const [landlord, setLandlord] = useState<string>("");
   const [method, setMethod] = useState<Payment["method"]>("Bank Transfer");
   const [message, setMessage] = useState<string>("");
 
-  const logPayment = async (p: Payment) => {
-    await postToSheet({
+  const logToSheet = async (p: Payment) => {
+    const payload = {
       table: "payments",
       ref: p.ref,
       amount: p.amount,
@@ -970,10 +863,21 @@ const PayTab: React.FC<PayTabProps> = ({
       utmMedium: utm.medium,
       utmCampaign: utm.campaign,
       ua: getUA(),
-    });
+    };
+    try {
+      await postToSheet(payload, qaCfg);
+      logEvent(newEvent("sheet_log_ok", { table: "payments", ref: p.ref }));
+    } catch (e: any) {
+      logEvent(newEvent("sheet_log_fail", { table: "payments", ref: p.ref, err: String(e?.message || e) }));
+    }
   };
 
   const handleCreate = async () => {
+    const r = checkRateLimit("paymentCreate");
+    if (!r.ok) {
+      setMessage(r.message || "Rate limit");
+      return;
+    }
     const amt = Number(amount);
     if (!amt || amt <= 0 || !landlord.trim()) {
       setMessage(t.pay.invalid);
@@ -982,24 +886,13 @@ const PayTab: React.FC<PayTabProps> = ({
     const id = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
     const ref = `RB-${Math.floor(100000 + Math.random() * 900000)}`;
     const status: PaymentStatus = method === "Bank Transfer" ? "initiated" : "succeeded";
-    const base: Payment = {
-      id,
-      amount: amt,
-      landlord: landlord.trim(),
-      method,
-      status,
-      ts: Date.now(),
-      ref,
-    };
+    const base: Payment = { id, amount: amt, landlord: landlord.trim(), method, status, ts: Date.now(), ref };
     addPayment(base);
-    setMessage(
-      method === "Bank Transfer"
-        ? "Transfer instructions generated below. Mark as sent when done."
-        : "Payment succeeded (demo). View receipt below."
-    );
+    logEvent(newEvent("payment_create", { ref: base.ref, method: base.method, status: base.status, amount: base.amount }));
+    setMessage(method === "Bank Transfer" ? "Transfer instructions generated below. Mark as sent when done." : "Payment succeeded (demo). View receipt below.");
     setAmount("");
     setLandlord("");
-    await logPayment(base);
+    await logToSheet(base);
   };
 
   const markSent = async (id: string) => {
@@ -1007,31 +900,21 @@ const PayTab: React.FC<PayTabProps> = ({
     if (!p) return;
     const patch: Partial<Payment> = { status: "sent" };
     updatePayment(id, patch);
-    await logPayment({ ...p, ...patch } as Payment);
+    logEvent(newEvent("payment_mark_sent", { ref: p.ref }));
+    await logToSheet({ ...p, ...patch } as Payment);
   };
 
   const refund = async (id: string) => {
     const p = payments.find((x) => x.id === id);
-    if (!p) return;
-    if (p.status === "refunded") return;
+    if (!p || p.status === "refunded") return;
     const patch: Partial<Payment> = { status: "refunded" };
     updatePayment(id, patch);
-    await logPayment({ ...p, ...patch } as Payment);
+    logEvent(newEvent("payment_refund", { ref: p.ref }));
+    await logToSheet({ ...p, ...patch } as Payment);
   };
 
   const downloadCSV = () => {
-    const headers = [
-      "ref",
-      "amount",
-      "landlord",
-      "method",
-      "status",
-      "ts",
-      "role",
-      "utmSource",
-      "utmMedium",
-      "utmCampaign",
-    ];
+    const headers = ["ref", "amount", "landlord", "method", "status", "ts", "role", "utmSource", "utmMedium", "utmCampaign"];
     const rows = payments.map((p) => [
       p.ref,
       String(p.amount),
@@ -1045,23 +928,12 @@ const PayTab: React.FC<PayTabProps> = ({
       utm.campaign,
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "rentback-demo-payments.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadAs("rentback-demo-payments.csv", csv, "text/csv;charset=utf-8;");
   };
 
   return (
     <div>
-      <SectionTitle
-        title={t.pay.title}
-        subtitle={
-          FLAGS.ENABLE_REAL_PAYMENTS ? "Live mode" : t.pay.subtitle
-        }
-      />
+      <SectionTitle title={t.pay.title} subtitle={FLAGS.ENABLE_REAL_PAYMENTS ? "Live mode" : t.pay.subtitle} />
 
       <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
         <input
@@ -1069,72 +941,30 @@ const PayTab: React.FC<PayTabProps> = ({
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
           placeholder={t.pay.amount}
           inputMode="numeric"
-          style={{
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid rgba(0,0,0,0.1)",
-            background: BRAND.surface,
-          }}
+          style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }}
         />
         <input
           value={landlord}
           onChange={(e) => setLandlord(e.target.value)}
           placeholder={t.pay.landlord}
-          style={{
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid rgba(0,0,0,0.1)",
-            background: BRAND.surface,
-          }}
+          style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }}
         />
-        <select
-          value={method}
-          onChange={(e) => setMethod(e.target.value as Payment["method"])}
-          style={{
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid rgba(0,0,0,0.1)",
-            background: BRAND.surface,
-          }}
-        >
+        <select value={method} onChange={(e) => setMethod(e.target.value as Payment["method"])} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface }}>
           <option>Bank Transfer</option>
           <option>Card</option>
           <option>Wallet</option>
         </select>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button
-            onClick={handleCreate}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: `1px solid ${BRAND.ring}`,
-              background: BRAND.primary,
-              color: "#fff",
-              fontWeight: 700,
-            }}
-          >
+          <button onClick={handleCreate} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}>
             {t.pay.create}
           </button>
-          <button
-            onClick={downloadCSV}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: `1px solid ${BRAND.ring}`,
-              background: BRAND.surface,
-              color: BRAND.primary,
-              fontWeight: 700,
-            }}
-          >
+          <button onClick={downloadCSV} style={{ padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 700 }}>
             {t.pay.csv}
           </button>
         </div>
-        {message ? (
-          <div style={{ fontSize: 12, color: BRAND.primary }}>{message}</div>
-        ) : null}
+        {message ? <div style={{ fontSize: 12, color: BRAND.primary }}>{message}</div> : null}
       </div>
 
-      {/* Active / recent payments */}
       <SectionTitle title={t.pay.recent} />
       <div style={{ display: "grid", gap: 10 }}>
         {payments.length === 0 ? (
@@ -1144,50 +974,21 @@ const PayTab: React.FC<PayTabProps> = ({
             .slice()
             .sort((a, b) => b.ts - a.ts)
             .map((p) => (
-              <div
-                key={p.id}
-                style={{
-                  padding: 12,
-                  borderRadius: 12,
-                  border: "1px solid rgba(0,0,0,0.06)",
-                  background: BRAND.surface,
-                }}
-              >
+              <div key={p.id} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
                   <span>{p.landlord}</span>
                   <span>{formatPKR(p.amount)}</span>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginTop: 6,
-                    fontSize: 12,
-                    opacity: 0.8,
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, opacity: 0.8 }}>
                   <span>
                     {p.method} • Ref {p.ref}
                   </span>
                   <span
                     style={{
-                      color:
-                        p.status === "succeeded"
-                          ? BRAND.primary
-                          : p.status === "sent"
-                          ? "#92400e"
-                          : p.status === "refunded"
-                          ? "#6b7280"
-                          : "#1f2937",
+                      color: p.status === "succeeded" ? BRAND.primary : p.status === "sent" ? "#92400e" : p.status === "refunded" ? "#6b7280" : "#1f2937",
                     }}
                   >
-                    {p.status === "succeeded"
-                      ? t.pay.succeeded
-                      : p.status === "sent"
-                      ? t.pay.sent
-                      : p.status === "refunded"
-                      ? t.pay.refunded
-                      : t.pay.instructions}
+                    {p.status === "succeeded" ? t.pay.succeeded : p.status === "sent" ? t.pay.sent : p.status === "refunded" ? t.pay.refunded : t.pay.instructions}
                   </span>
                 </div>
                 {p.method === "Bank Transfer" && p.status === "initiated" ? (
@@ -1201,18 +1002,7 @@ const PayTab: React.FC<PayTabProps> = ({
                     <div>
                       {t.pay.memo}: <b>{p.ref}</b>
                     </div>
-                    <button
-                      onClick={() => markSent(p.id)}
-                      style={{
-                        marginTop: 8,
-                        padding: "8px 10px",
-                        borderRadius: 10,
-                        border: `1px solid ${BRAND.ring}`,
-                        background: BRAND.primary,
-                        color: "#fff",
-                        fontWeight: 600,
-                      }}
-                    >
+                    <button onClick={() => markSent(p.id)} style={{ marginTop: 8, padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}>
                       {t.pay.markSent}
                     </button>
                   </div>
@@ -1220,14 +1010,7 @@ const PayTab: React.FC<PayTabProps> = ({
                 <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
                     onClick={() => onOpenReceipt(p)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: `1px solid ${BRAND.ring}`,
-                      background: BRAND.surface,
-                      color: BRAND.primary,
-                      fontWeight: 600,
-                    }}
+                    style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 600 }}
                   >
                     {t.pay.receipt}
                   </button>
@@ -1238,10 +1021,7 @@ const PayTab: React.FC<PayTabProps> = ({
                       padding: "8px 10px",
                       borderRadius: 10,
                       border: `1px solid ${BRAND.ring}`,
-                      background:
-                        p.status === "refunded" || p.status === "initiated"
-                          ? "#f9fafb"
-                          : "#fff7ed",
+                      background: p.status === "refunded" || p.status === "initiated" ? "#f9fafb" : "#fff7ed",
                       color: "#92400e",
                       fontWeight: 600,
                       opacity: p.status === "refunded" || p.status === "initiated" ? 0.6 : 1,
@@ -1258,57 +1038,16 @@ const PayTab: React.FC<PayTabProps> = ({
   );
 };
 
-const RewardsGrid: React.FC<{
-  t: I18n;
-  onRedeem: (reward: (typeof rewardsCatalog)[number]) => void;
-}> = ({ t, onRedeem }) => (
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-      gap: 12,
-    }}
-  >
+const RewardsGrid: React.FC<{ t: I18n; onRedeem: (reward: (typeof rewardsCatalog)[number]) => void }> = ({ t, onRedeem }) => (
+  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
     {rewardsCatalog.map((r) => (
-      <div
-        key={r.id}
-        style={{
-          padding: 12,
-          borderRadius: 14,
-          border: "1px solid rgba(0,0,0,0.06)",
-          background: BRAND.surface,
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-        }}
-      >
+      <div key={r.id} style={{ padding: 12, borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface, display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ fontWeight: 600 }}>{r.title}</div>
         <div style={{ fontSize: 12, opacity: 0.7 }}>{r.note}</div>
         <div style={{ marginTop: 6 }}>
-          <span
-            style={{
-              fontSize: 11,
-              padding: "4px 6px",
-              borderRadius: 8,
-              background: "#ecfdf5",
-              color: BRAND.primary,
-            }}
-          >
-            {r.save}
-          </span>
+          <span style={{ fontSize: 11, padding: "4px 6px", borderRadius: 8, background: "#ecfdf5", color: BRAND.primary }}>{r.save}</span>
         </div>
-        <button
-          onClick={() => onRedeem(r)}
-          style={{
-            marginTop: 8,
-            padding: "8px 10px",
-            borderRadius: 10,
-            border: "1px solid rgba(0,0,0,0.1)",
-            background: BRAND.primary,
-            color: "white",
-            fontWeight: 600,
-          }}
-        >
+        <button onClick={() => onRedeem(r)} style={{ marginTop: 8, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.primary, color: "white", fontWeight: 600 }}>
           {t.rewards.redeem}
         </button>
       </div>
@@ -1324,30 +1063,39 @@ const RewardsTab: React.FC<{
   utm: Utm;
   onOpenRedeemReceipt: (r: Redemption) => void;
   onOpenModal: (reward: (typeof rewardsCatalog)[number]) => void;
-}> = ({ t, redemptions, setRedemptions, role, utm, onOpenRedeemReceipt, onOpenModal }) => {
+  logEvent: (e: EventItem) => void;
+  qaCfg: QAConfig;
+}> = ({ t, redemptions, setRedemptions, role, utm, onOpenRedeemReceipt, onOpenModal, logEvent, qaCfg }) => {
   const mark = async (id: string, status: RedemptionStatus) => {
-    setRedemptions((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, status } : x))
-    );
+    setRedemptions((prev) => prev.map((x) => (x.id === id ? { ...x, status } : x)));
     const item = redemptions.find((r) => r.id === id);
     if (!item) return;
-    await postToSheet({
-      table: "redemptions",
-      ts: new Date(item.ts).toISOString(),
-      ref: item.ref,
-      user: "", // optional
-      role,
-      rewardId: item.rewardId,
-      brand: item.brand,
-      title: item.title,
-      denomination: item.denomination,
-      points: item.points,
-      status,
-      ua: getUA(),
-      utmSource: utm.source,
-      utmMedium: utm.medium,
-      utmCampaign: utm.campaign,
-    });
+    logEvent(newEvent("redeem_status", { ref: item.ref, status }));
+    try {
+      await postToSheet(
+        {
+          table: "redemptions",
+          ts: new Date(item.ts).toISOString(),
+          ref: item.ref,
+          user: "",
+          role,
+          rewardId: item.rewardId,
+          brand: item.brand,
+          title: item.title,
+          denomination: item.denomination,
+          points: item.points,
+          status,
+          ua: getUA(),
+          utmSource: utm.source,
+          utmMedium: utm.medium,
+          utmCampaign: utm.campaign,
+        },
+        qaCfg
+      );
+      logEvent(newEvent("sheet_log_ok", { table: "redemptions", ref: item.ref }));
+    } catch (e: any) {
+      logEvent(newEvent("sheet_log_fail", { table: "redemptions", ref: item.ref, err: String(e?.message || e) }));
+    }
   };
 
   return (
@@ -1365,41 +1113,14 @@ const RewardsTab: React.FC<{
             .slice()
             .sort((a, b) => b.ts - a.ts)
             .map((r) => (
-              <div
-                key={r.id}
-                style={{
-                  padding: 12,
-                  borderRadius: 12,
-                  border: "1px solid rgba(0,0,0,0.06)",
-                  background: BRAND.surface,
-                }}
-              >
+              <div key={r.id} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
                   <span>
                     {r.brand} — {r.title} ({formatPKR(r.denomination)})
                   </span>
-                  <span
-                    style={{
-                      color:
-                        r.status === "fulfilled"
-                          ? BRAND.primary
-                          : r.status === "cancelled"
-                          ? "#6b7280"
-                          : "#1f2937",
-                    }}
-                  >
-                    {r.status}
-                  </span>
+                  <span style={{ color: r.status === "fulfilled" ? BRAND.primary : r.status === "cancelled" ? "#6b7280" : "#1f2937" }}>{r.status}</span>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginTop: 6,
-                    fontSize: 12,
-                    opacity: 0.8,
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, opacity: 0.8 }}>
                   <span>
                     Ref {r.ref} • {t.rewards.points}: {r.points}
                   </span>
@@ -1408,44 +1129,21 @@ const RewardsTab: React.FC<{
                 <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
                     onClick={() => onOpenRedeemReceipt(r)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: `1px solid ${BRAND.ring}`,
-                      background: BRAND.surface,
-                      color: BRAND.primary,
-                      fontWeight: 600,
-                    }}
+                    style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, color: BRAND.primary, fontWeight: 600 }}
                   >
                     {t.rewards.viewReceipt}
                   </button>
                   <button
                     onClick={() => mark(r.id, "fulfilled")}
                     disabled={r.status === "fulfilled"}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: `1px solid ${BRAND.ring}`,
-                      background: r.status === "fulfilled" ? "#f3f4f6" : "#ecfdf5",
-                      color: BRAND.primary,
-                      fontWeight: 600,
-                      opacity: r.status === "fulfilled" ? 0.6 : 1,
-                    }}
+                    style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: r.status === "fulfilled" ? "#f3f4f6" : "#ecfdf5", color: BRAND.primary, fontWeight: 600, opacity: r.status === "fulfilled" ? 0.6 : 1 }}
                   >
                     {t.rewards.markFulfilled}
                   </button>
                   <button
                     onClick={() => mark(r.id, "cancelled")}
                     disabled={r.status === "cancelled"}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: `1px solid ${BRAND.ring}`,
-                      background: r.status === "cancelled" ? "#f3f4f6" : "#fff7ed",
-                      color: "#92400e",
-                      fontWeight: 600,
-                      opacity: r.status === "cancelled" ? 0.6 : 1,
-                    }}
+                    style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: r.status === "cancelled" ? "#f3f4f6" : "#fff7ed", color: "#92400e", fontWeight: 600, opacity: r.status === "cancelled" ? 0.6 : 1 }}
                   >
                     {t.rewards.markCancelled}
                   </button>
@@ -1467,29 +1165,13 @@ const SupportTab: React.FC<{ t: I18n }> = ({ t }) => (
   </div>
 );
 
-const ProfileTab: React.FC<{ t: I18n; kyc: KycState; setKyc: (k: KycState) => void }> = ({
-  t,
-  kyc,
-  setKyc,
-}) => (
+const ProfileTab: React.FC<{ t: I18n; kyc: KycState; setKyc: (k: KycState) => void }> = ({ t, kyc, setKyc }) => (
   <div>
     <SectionTitle title={t.profile.title} />
-    <Row right={kyc === "verified" ? t.profile.verified : kyc === "in-progress" ? t.profile.inprogress : t.profile.notStarted}>
-      {t.profile.kyc}
-    </Row>
+    <Row right={kyc === "verified" ? t.profile.verified : kyc === "in-progress" ? t.profile.inprogress : t.profile.notStarted}>{t.profile.kyc}</Row>
     <div style={{ height: 8 }} />
     {kyc !== "verified" ? (
-      <button
-        onClick={() => setKyc(kyc === "none" ? "in-progress" : "verified")}
-        style={{
-          padding: "10px 12px",
-          borderRadius: 10,
-          border: `1px solid ${BRAND.ring}`,
-          background: BRAND.primary,
-          color: "#fff",
-          fontWeight: 600,
-        }}
-      >
+      <button onClick={() => setKyc(kyc === "none" ? "in-progress" : "verified")} style={{ padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 600 }}>
         {kyc === "none" ? t.profile.start : t.profile.complete}
       </button>
     ) : (
@@ -1501,22 +1183,14 @@ const ProfileTab: React.FC<{ t: I18n; kyc: KycState; setKyc: (k: KycState) => vo
 const StatusScreen: React.FC<{ t: I18n }> = ({ t }) => (
   <div>
     <SectionTitle title={t.status.title} subtitle={t.status.subtitle} />
-    <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>
-      {t.status.items.map((it: string, i: number) => (
-        <li key={i}>{it}</li>
-      ))}
-    </ul>
+    <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>{t.status.items.map((it: string, i: number) => <li key={i}>{it}</li>)}</ul>
   </div>
 );
 
 const SecurityPrivacy: React.FC<{ t: I18n }> = ({ t }) => (
   <div>
     <SectionTitle title={t.security.title} subtitle={t.security.subtitle} />
-    <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>
-      {t.security.items.map((it: string, i: number) => (
-        <li key={i}>{it}</li>
-      ))}
-    </ul>
+    <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>{t.security.items.map((it: string, i: number) => <li key={i}>{it}</li>)}</ul>
   </div>
 );
 
@@ -1537,14 +1211,189 @@ const FounderScreen: React.FC<{ t: I18n }> = ({ t }) => (
   </div>
 );
 
+// ---------- QA Panel (Phase 1) ----------
+const QAPanel: React.FC<{
+  onClose: () => void;
+  payments: Payment[];
+  redemptions: Redemption[];
+  events: EventItem[];
+  flags: typeof FLAGS;
+  utm: Utm;
+  lang: "en" | "ur";
+  role: Role;
+  qaCfg: QAConfig;
+  setQaCfg: (cfg: QAConfig) => void;
+  resetAll: () => void;
+  seedDemo: () => void;
+}> = ({ onClose, payments, redemptions, events, flags, utm, lang, role, qaCfg, setQaCfg, resetAll, seedDemo }) => {
+  const snapPay = rlSnapshot("paymentCreate");
+  const snapRedeem = rlSnapshot("redeem");
+
+  return (
+    <div role="dialog" aria-modal="true" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,0.4)", display: "grid", placeItems: "center", padding: 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 900, background: BRAND.surface, borderRadius: 16, border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 24px 50px rgba(0,0,0,0.35)", padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, color: BRAND.primary }}>
+            <BrandLogo /> QA Panel
+          </div>
+          <button onClick={onClose} aria-label="Close QA" style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: "6px 10px" }}>
+            ✕
+          </button>
+        </div>
+
+        <div style={{ display: "grid", gap: 12 }}>
+          {/* Overview */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+            <Row>
+              <b>Counts</b>
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
+                Payments: {payments.length} • Redemptions: {redemptions.length} • Events: {events.length}
+              </div>
+            </Row>
+            <Row>
+              <b>Context</b>
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
+                Lang: {lang} • Role: {role} • UTM: {utm.source || "-"} / {utm.medium || "-"} / {utm.campaign || "-"}
+              </div>
+            </Row>
+            <Row>
+              <b>Flags</b>
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
+                DEMO:{String(flags.DEMO_MODE)} • REWARDS:{String(flags.ENABLE_REWARDS)} • REAL_PAY:{String(flags.ENABLE_REAL_PAYMENTS)} • QA:{String(flags.ENABLE_QA)}
+              </div>
+            </Row>
+            <Row>
+              <b>Rate Limits</b>
+              <div style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
+                Payment Create — {snapPay.lastMin}/{snapPay.limitMin} min • {snapPay.lastDay}/{snapPay.limitDay} day<br />
+                Redeem — {snapRedeem.lastMin}/{snapRedeem.limitMin} min • {snapRedeem.lastDay}/{snapRedeem.limitDay} day
+              </div>
+            </Row>
+          </div>
+
+          {/* QA Controls */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+            <Row>
+              <div>
+                <b>Network Delay (ms)</b>
+                <div style={{ marginTop: 6 }}>
+                  <input
+                    type="number"
+                    value={qaCfg.netDelayMs}
+                    onChange={(e) => {
+                      const v = Math.max(0, Number(e.target.value || 0));
+                      const next = { ...qaCfg, netDelayMs: v };
+                      setQaCfg(next);
+                      saveQAConfig(next);
+                    }}
+                    style={{ padding: 8, borderRadius: 8, border: "1px solid rgba(0,0,0,0.1)" }}
+                  />
+                </div>
+              </div>
+            </Row>
+            <Row>
+              <div>
+                <b>Force Sheet Fail</b>
+                <div style={{ marginTop: 6 }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={qaCfg.failSheet}
+                      onChange={(e) => {
+                        const next = { ...qaCfg, failSheet: e.target.checked };
+                        setQaCfg(next);
+                        saveQAConfig(next);
+                      }}
+                    />
+                    Simulate fetch failure in postToSheet
+                  </label>
+                </div>
+              </div>
+            </Row>
+            <Row>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  onClick={seedDemo}
+                  style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: "#ecfdf5", color: BRAND.primary, fontWeight: 700 }}
+                >
+                  Seed Demo Data
+                </button>
+                <button
+                  onClick={resetAll}
+                  style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: "#fff7ed", color: "#92400e", fontWeight: 700 }}
+                >
+                  Reset Demo Data
+                </button>
+              </div>
+            </Row>
+            <Row>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => downloadAs("rentback-events.json", JSON.stringify(events, null, 2))}
+                  style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 700, color: BRAND.primary }}
+                >
+                  Download Events JSON
+                </button>
+                <button
+                  onClick={() => downloadAs("rentback-events.csv", eventsToCSV(events), "text/csv;charset=utf-8;")}
+                  style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 700, color: BRAND.primary }}
+                >
+                  Download Events CSV
+                </button>
+                <button
+                  onClick={() => {
+                    rlResetAll();
+                    alert("Rate-limit counters cleared.");
+                  }}
+                  style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.surface, fontWeight: 700, color: BRAND.primary }}
+                >
+                  Clear Rate Limits
+                </button>
+              </div>
+            </Row>
+          </div>
+
+          {/* Event list */}
+          <div>
+            <b style={{ display: "block", marginBottom: 8 }}>Recent Events</b>
+            <div style={{ maxHeight: 260, overflow: "auto", border: "1px solid rgba(0,0,0,0.06)", borderRadius: 12 }}>
+              {events.length === 0 ? (
+                <div style={{ padding: 12, fontSize: 12, opacity: 0.7 }}>No events yet.</div>
+              ) : (
+                events
+                  .slice()
+                  .sort((a, b) => b.ts - a.ts)
+                  .map((e) => (
+                    <div key={e.id} style={{ padding: 10, borderBottom: "1px solid rgba(0,0,0,0.06)", fontSize: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <div>
+                          <b>{e.kind}</b> {e.ref ? `• ${e.ref}` : ""}
+                        </div>
+                        <div style={{ opacity: 0.7 }}>{new Date(e.ts).toLocaleString("en-PK")}</div>
+                      </div>
+                      {e.meta ? <div style={{ marginTop: 4, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{JSON.stringify(e.meta)}</div> : null}
+                    </div>
+                  ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ---------- App ----------
 const App: React.FC = () => {
   const [tab, setTab] = useState<Tab>("home");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showQA, setShowQA] = useState(false);
+
   const [role, setRole] = useState<Role>("tenant");
   const [kyc, setKyc] = useState<KycState>("none");
   const [payments, setPayments] = useState<Payment[]>([]);
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [receiptFor, setReceiptFor] = useState<Payment | null>(null);
   const [redeemPick, setRedeemPick] = useState<(typeof rewardsCatalog)[number] | null>(null);
   const [redeemReceipt, setRedeemReceipt] = useState<Redemption | null>(null);
@@ -1555,13 +1404,14 @@ const App: React.FC = () => {
 
   const utm = useMemo(() => getUtm(), []);
 
-  // language → reflect on <html>, and persist
+  // QA config
+  const [qaCfg, setQaCfg] = useState<QAConfig>(QA_DEFAULT);
+
+  // language → persist + reflect on <html>
   useEffect(() => {
     try {
       const stored = localStorage.getItem("rb-lang");
-      if (stored === "en" || stored === "ur") {
-        setLang(stored);
-      }
+      if (stored === "en" || stored === "ur") setLang(stored);
     } catch {}
   }, []);
   useEffect(() => {
@@ -1573,31 +1423,34 @@ const App: React.FC = () => {
     } catch {}
   }, [lang, dir]);
 
-  // Load/save demo payments to localStorage
+  // Load QA + demo data
   useEffect(() => {
+    setQaCfg(loadQAConfig());
     try {
-      const raw = localStorage.getItem("rb-demo-payments");
-      if (raw) setPayments(JSON.parse(raw));
+      const rawP = localStorage.getItem("rb-demo-payments");
+      if (rawP) setPayments(JSON.parse(rawP));
+      const rawR = localStorage.getItem("rb-demo-redemptions");
+      if (rawR) setRedemptions(JSON.parse(rawR));
+      const rawE = localStorage.getItem("rb-events");
+      if (rawE) setEvents(JSON.parse(rawE));
     } catch {}
   }, []);
+  // Persist
   useEffect(() => {
     try {
       localStorage.setItem("rb-demo-payments", JSON.stringify(payments));
     } catch {}
   }, [payments]);
-
-  // Load/save redemptions
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("rb-demo-redemptions");
-      if (raw) setRedemptions(JSON.parse(raw));
-    } catch {}
-  }, []);
   useEffect(() => {
     try {
       localStorage.setItem("rb-demo-redemptions", JSON.stringify(redemptions));
     } catch {}
   }, [redemptions]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("rb-events", JSON.stringify(events));
+    } catch {}
+  }, [events]);
 
   // Consent banner
   const [showConsent, setShowConsent] = useState(false);
@@ -1614,9 +1467,16 @@ const App: React.FC = () => {
     setShowConsent(false);
   };
 
+  // Event logging
+  const logEvent = (e: EventItem) => setEvents((prev) => [e, ...prev]);
+
   const onConfirmRedeem = async (denom: number) => {
+    const r = checkRateLimit("redeem");
+    if (!r.ok) {
+      alert(r.message || "Rate limit");
+      return;
+    }
     if (!redeemPick) return;
-    // simple demo points calc: 1 point per 10 PKR
     const pts = Math.round(denom / 10);
     const id = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
     const ref = `RB-REDEEM-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -1634,26 +1494,36 @@ const App: React.FC = () => {
     setRedemptions((prev) => [item, ...prev]);
     setRedeemPick(null);
     setRedeemReceipt(item);
+    logEvent(newEvent("redeem_request", { ref: item.ref, brand: item.brand, denom: item.denomination }));
 
-    await postToSheet({
-      table: "redemptions",
-      ts: new Date(item.ts).toISOString(),
-      ref: item.ref,
-      user: "",
-      role,
-      rewardId: item.rewardId,
-      brand: item.brand,
-      title: item.title,
-      denomination: item.denomination,
-      points: item.points,
-      status: item.status,
-      ua: getUA(),
-      utmSource: utm.source,
-      utmMedium: utm.medium,
-      utmCampaign: utm.campaign,
-    });
+    try {
+      await postToSheet(
+        {
+          table: "redemptions",
+          ts: new Date(item.ts).toISOString(),
+          ref: item.ref,
+          user: "",
+          role,
+          rewardId: item.rewardId,
+          brand: item.brand,
+          title: item.title,
+          denomination: item.denomination,
+          points: item.points,
+          status: item.status,
+          ua: getUA(),
+          utmSource: utm.source,
+          utmMedium: utm.medium,
+          utmCampaign: utm.campaign,
+        },
+        qaCfg
+      );
+      logEvent(newEvent("sheet_log_ok", { table: "redemptions", ref: item.ref }));
+    } catch (e: any) {
+      logEvent(newEvent("sheet_log_fail", { table: "redemptions", ref: item.ref, err: String(e?.message || e) }));
+    }
   };
 
+  // Content routing
   const content = useMemo(() => {
     switch (tab) {
       case "home":
@@ -1664,12 +1534,12 @@ const App: React.FC = () => {
             t={t}
             payments={payments}
             addPayment={(p) => setPayments((prev) => [...prev, p])}
-            updatePayment={(id, patch) =>
-              setPayments((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))
-            }
+            updatePayment={(id, patch) => setPayments((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))}
             role={role}
             utm={utm}
             onOpenReceipt={(p) => setReceiptFor(p)}
+            logEvent={logEvent}
+            qaCfg={qaCfg}
           />
         );
       case "rewards":
@@ -1682,6 +1552,8 @@ const App: React.FC = () => {
             utm={utm}
             onOpenRedeemReceipt={(r) => setRedeemReceipt(r)}
             onOpenModal={(r) => setRedeemPick(r)}
+            logEvent={logEvent}
+            qaCfg={qaCfg}
           />
         ) : (
           <div style={{ padding: 8, opacity: 0.8 }}>Rewards are disabled.</div>
@@ -1701,7 +1573,7 @@ const App: React.FC = () => {
       default:
         return null;
     }
-  }, [tab, role, kyc, payments, redemptions, utm, t]);
+  }, [tab, role, kyc, payments, redemptions, utm, t, qaCfg]);
 
   const navItems = [
     { key: "home", label: t.nav.home },
@@ -1711,17 +1583,48 @@ const App: React.FC = () => {
     { key: "profile", label: t.nav.profile },
   ] as const;
 
+  // Seed/reset helpers for QA
+  const resetAll = () => {
+    try {
+      localStorage.removeItem("rb-demo-payments");
+      localStorage.removeItem("rb-demo-redemptions");
+      localStorage.removeItem("rb-events");
+      rlResetAll();
+    } catch {}
+    setPayments([]);
+    setRedemptions([]);
+    setEvents([]);
+    alert("Demo data cleared.");
+  };
+  const seedDemo = () => {
+    const p: Payment = {
+      id: `${Date.now()}_seedp`,
+      amount: 120000,
+      landlord: "Al-Noor Apartments — Unit 3B",
+      method: "Bank Transfer",
+      status: "initiated",
+      ts: Date.now(),
+      ref: `RB-${Math.floor(100000 + Math.random() * 900000)}`,
+    };
+    const r: Redemption = {
+      id: `${Date.now()}_seedr`,
+      ref: `RB-REDEEM-${Math.floor(100000 + Math.random() * 900000)}`,
+      rewardId: "daraz",
+      brand: "Daraz",
+      title: "Daraz Voucher",
+      denomination: 1000,
+      points: 100,
+      status: "requested",
+      ts: Date.now(),
+    };
+    setPayments((prev) => [p, ...prev]);
+    setRedemptions((prev) => [r, ...prev]);
+    setEvents((prev) => [newEvent("payment_create", { ref: p.ref, amount: p.amount }), newEvent("redeem_request", { ref: r.ref, brand: r.brand }) , ...prev]);
+    alert("Seeded one payment + one redemption.");
+  };
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: BRAND.bg,
-        display: "flex",
-        flexDirection: "column",
-        color: BRAND.text,
-      }}
-      dir={dir}
-    >
+    <div style={{ minHeight: "100vh", background: BRAND.bg, display: "flex", flexDirection: "column", color: BRAND.text }} dir={dir}>
       {/* Keyframes for animated card gradient */}
       <style>
         {
@@ -1742,15 +1645,7 @@ const App: React.FC = () => {
           backdropFilter: "saturate(1.8) blur(8px)",
         }}
       >
-        <div
-          style={{
-            height: 56,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 14px",
-          }}
-        >
+        <div style={{ height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
             <BrandLogo />
             RentBack
@@ -1758,20 +1653,28 @@ const App: React.FC = () => {
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* Language pill */}
-            <Pill onClick={() => setLang((p) => (p === "en" ? "ur" : "en"))}>
+            <Pill
+              onClick={() => {
+                setLang((p) => {
+                  const nx = p === "en" ? "ur" : "en";
+                  return nx;
+                });
+                logEvent(newEvent("lang_change", { to: lang === "en" ? "ur" : "en" }));
+              }}
+            >
               {t.langNames[lang === "en" ? "ur" : "en"]}
             </Pill>
+
+            {/* QA button (only if enabled) */}
+            {FLAGS.ENABLE_QA ? (
+              <Pill onClick={() => setShowQA(true)}>QA</Pill>
+            ) : null}
 
             {/* Menu button */}
             <button
               onClick={() => setMenuOpen(true)}
               aria-label="Open menu"
-              style={{
-                border: "1px solid rgba(0,0,0,0.1)",
-                background: BRAND.surface,
-                borderRadius: 10,
-                padding: 8,
-              }}
+              style={{ border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface, borderRadius: 10, padding: 8 }}
             >
               <div style={{ width: 18, height: 2, background: "#111", marginBottom: 3 }} />
               <div style={{ width: 18, height: 2, background: "#111", marginBottom: 3 }} />
@@ -1797,14 +1700,7 @@ const App: React.FC = () => {
             <span style={{ color: BRAND.primary, fontWeight: 700 }}>Pilot — SBP Sandbox</span>
             <button
               onClick={() => window.open("/legal/sandbox", "_blank")}
-              style={{
-                border: `1px solid ${BRAND.ring}`,
-                background: "#fff",
-                padding: "2px 8px",
-                borderRadius: 999,
-                fontWeight: 600,
-                color: BRAND.primary,
-              }}
+              style={{ border: `1px solid ${BRAND.ring}`, background: "#fff", padding: "2px 8px", borderRadius: 999, fontWeight: 600, color: BRAND.primary }}
             >
               Learn more
             </button>
@@ -1856,19 +1752,7 @@ const App: React.FC = () => {
 
       {/* Right Drawer */}
       {menuOpen ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setMenuOpen(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            background: "rgba(0,0,0,0.35)",
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
-        >
+        <div role="dialog" aria-modal="true" onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.35)", display: "flex", justifyContent: "flex-end" }}>
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -1885,11 +1769,7 @@ const App: React.FC = () => {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontWeight: 700 }}>{t.menu}</div>
-              <button
-                onClick={() => setMenuOpen(false)}
-                aria-label="Close"
-                style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}
-              >
+              <button onClick={() => setMenuOpen(false)} aria-label="Close" style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}>
                 ✕
               </button>
             </div>
@@ -1907,8 +1787,24 @@ const App: React.FC = () => {
             <div style={{ height: 6 }} />
             <SectionTitle title={t.drawer.role} subtitle={t.drawer.roleHint} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Pill onClick={() => setRole("tenant")}>{role === "tenant" ? `● ${t.drawer.tenant}` : t.drawer.tenant}</Pill>
-              <Pill onClick={() => setRole("landlord")}>{role === "landlord" ? `● ${t.drawer.landlord}` : t.drawer.landlord}</Pill>
+              <Pill
+                onClick={() => {
+                  setRole("tenant");
+                  setMenuOpen(false);
+                  setEvents((prev) => [newEvent("role_change", { to: "tenant" }), ...prev]);
+                }}
+              >
+                {role === "tenant" ? `● ${t.drawer.tenant}` : t.drawer.tenant}
+              </Pill>
+              <Pill
+                onClick={() => {
+                  setRole("landlord");
+                  setMenuOpen(false);
+                  setEvents((prev) => [newEvent("role_change", { to: "landlord" }), ...prev]);
+                }}
+              >
+                {role === "landlord" ? `● ${t.drawer.landlord}` : t.drawer.landlord}
+              </Pill>
             </div>
 
             <div style={{ height: 6 }} />
@@ -1917,6 +1813,14 @@ const App: React.FC = () => {
               <Pill onClick={() => setLang("en")}>{lang === "en" ? `● ${t.langNames.en}` : t.langNames.en}</Pill>
               <Pill onClick={() => setLang("ur")}>{lang === "ur" ? `● ${t.langNames.ur}` : t.langNames.ur}</Pill>
             </div>
+
+            {FLAGS.ENABLE_QA ? (
+              <>
+                <div style={{ height: 6 }} />
+                <SectionTitle title="QA" subtitle="Diagnostics & data tools" />
+                <Row onClick={() => { setShowQA(true); setMenuOpen(false); }}>{t.drawer.qa}</Row>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -1943,42 +1847,38 @@ const App: React.FC = () => {
           }}
         >
           <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-            We use minimal cookies for a better experience. Analytics are off by default in this
-            demo. Click **Allow** to enable basic analytics.
+            We use minimal cookies for a better experience. Analytics are off by default in this demo. Click <b>Allow</b> to enable basic analytics.
           </div>
           <button
             onClick={acceptConsent}
-            style={{
-              marginLeft: "auto",
-              padding: "8px 10px",
-              borderRadius: 10,
-              border: `1px solid ${BRAND.ring}`,
-              background: BRAND.primary,
-              color: "#fff",
-              fontWeight: 700,
-            }}
+            style={{ marginLeft: "auto", padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`, background: BRAND.primary, color: "#fff", fontWeight: 700 }}
           >
             Allow
           </button>
         </div>
       ) : null}
 
-      {/* Payment Receipt Modal */}
+      {/* Modals */}
       {receiptFor ? <PaymentReceiptModal t={t} payment={receiptFor} onClose={() => setReceiptFor(null)} /> : null}
+      {redeemPick ? <RedeemModal t={t} reward={redeemPick} onClose={() => setRedeemPick(null)} onConfirm={onConfirmRedeem} /> : null}
+      {redeemReceipt ? <RedeemReceiptModal t={t} item={redeemReceipt} onClose={() => setRedeemReceipt(null)} /> : null}
 
-      {/* Redeem Modal */}
-      {redeemPick ? (
-        <RedeemModal
-          t={t}
-          reward={redeemPick}
-          onClose={() => setRedeemPick(null)}
-          onConfirm={onConfirmRedeem}
+      {/* QA Panel */}
+      {showQA && FLAGS.ENABLE_QA ? (
+        <QAPanel
+          onClose={() => setShowQA(false)}
+          payments={payments}
+          redemptions={redemptions}
+          events={events}
+          flags={FLAGS}
+          utm={utm}
+          lang={lang}
+          role={role}
+          qaCfg={qaCfg}
+          setQaCfg={setQaCfg}
+          resetAll={resetAll}
+          seedDemo={seedDemo}
         />
-      ) : null}
-
-      {/* Redeem Receipt Modal */}
-      {redeemReceipt ? (
-        <RedeemReceiptModal t={t} item={redeemReceipt} onClose={() => setRedeemReceipt(null)} />
       ) : null}
     </div>
   );
