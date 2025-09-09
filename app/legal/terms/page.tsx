@@ -1,41 +1,12 @@
-// app/legal/terms/page.tsx
-export const metadata = {
-  title: "Terms of Service — RentBack",
-  description: "Your agreement with RentBack.",
-};
-
 export default function TermsPage() {
   return (
-    <>
-      <div className="rb-legal-pill">Pilot</div>
-      <h1>Terms of Service</h1>
-      <p>
-        During the sandbox pilot, features are experimental and provided “as is”. By using the site,
-        you agree to these terms.
+    <article>
+      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Terms of Service</h1>
+      <p style={{ opacity: 0.75 }}>Last updated: Sept 2024 (demo)</p>
+      <p style={{ marginTop: 12, lineHeight: 1.7 }}>
+        The app experience is a product demo (“as-is”). No warranties; no real funds are moved. By using the demo, you
+        agree not to enter sensitive personal information and understand that features are simulated.
       </p>
-
-      <h2>Use</h2>
-      <ul>
-        <li>You must provide accurate information.</li>
-        <li>No unlawful or abusive activity.</li>
-      </ul>
-
-      <h2>Payments</h2>
-      <p>
-        Payments are simulated in demo mode. No real funds move unless explicitly stated
-        otherwise.
-      </p>
-
-      <h2>Liability</h2>
-      <p>
-        To the extent permitted by law, we are not liable for indirect or consequential loss.
-      </p>
-
-      <h2>Changes</h2>
-      <p>We may update these terms and will post the latest version on this page.</p>
-
-      <h2>Contact</h2>
-      <p>help@rentback.app</p>
-    </>
+    </article>
   );
 }
