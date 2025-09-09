@@ -1,77 +1,83 @@
 "use client";
 import React from "react";
 
-type Lang = "en" | "ur";
+type Props = {
+  lang?: "en" | "ur";
+  className?: string;
+};
 
 const STR = {
   en: {
-    badge: "Sandbox",
-    blurb:
-      "Pilot under the State Bank of Pakistan Regulatory Sandbox. Features and limits may change.",
-    learn: "Learn more",
-    statusHref: "/legal/sandbox?lang=en",
+    title: "Regulatory Sandbox",
+    body:
+      "We’re preparing our application for the State Bank of Pakistan (SBP) Regulatory Sandbox.",
+    link: "Status & details",
   },
   ur: {
-    badge: "سینڈ باکس",
-    blurb:
-      "اسٹیٹ بینک آف پاکستان کے ریگولیٹری سینڈ باکس کے تحت پائلٹ۔ فیچرز اور حدود تبدیل ہو سکتی ہیں۔",
-    learn: "مزید جانیں",
-    statusHref: "/legal/sandbox?lang=ur",
+    title: "ریگولیٹری سینڈ باکس",
+    body:
+      "ہم اسٹیٹ بینک آف پاکستان (SBP) کے ریگولیٹری سینڈ باکس کے لیے اپنی درخواست تیار کر رہے ہیں۔",
+    link: "اسٹیٹس اور تفصیل",
   },
 } as const;
 
-export default function SandboxBanner({
-  lang = "en",
-  compact = false,
-}: {
-  lang?: Lang;
-  compact?: boolean;
-}) {
+export default function SandboxBanner({ lang = "en", className }: Props) {
   const t = STR[lang];
   return (
     <div
-      role="status"
+      className={className}
       style={{
-        margin: compact ? "8px 0 12px" : "12px 0 16px",
-        padding: compact ? "8px 10px" : "10px 12px",
+        margin: "12px 0 0",
         borderRadius: 12,
-        border: "1px solid rgba(5,150,105,0.20)",
-        background: "#ecfdf5",
-        color: "#065f46",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
+        border: "1px solid rgba(0,0,0,0.08)",
+        background:
+          "linear-gradient(180deg, rgba(16,185,129,0.07), rgba(255,255,255,0.9))",
+        padding: 12,
       }}
     >
-      <span
+      <div
         style={{
-          fontSize: 12,
-          fontWeight: 800,
-          background: "#d1fae5",
-          color: "#065f46",
-          padding: "3px 8px",
-          borderRadius: 999,
-          border: "1px solid rgba(5,150,105,0.25)",
-          whiteSpace: "nowrap",
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
         }}
       >
-        {t.badge}
-      </span>
-      <span style={{ fontSize: 13, lineHeight: 1.35 }}>{t.blurb}</span>
-      <a
-        href={t.statusHref}
-        target="_blank"
-        rel="noreferrer"
-        style={{
-          marginLeft: "auto",
-          fontSize: 12,
-          textDecoration: "underline",
-          color: "#065f46",
-          fontWeight: 600,
-        }}
-      >
-        {t.learn}
-      </a>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <span
+            aria-hidden
+            style={{
+              display: "inline-flex",
+              width: 8,
+              height: 8,
+              borderRadius: 999,
+              background: "#10b981",
+              boxShadow: "0 0 0 3px rgba(16,185,129,0.25)",
+            }}
+          />
+          <div>
+            <div style={{ fontWeight: 700 }}>{t.title}</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>{t.body}</div>
+          </div>
+        </div>
+        <a
+          href={`/legal/sandbox?lang=${lang}`}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: "1px solid rgba(0,0,0,0.1)",
+            background: "#fff",
+            fontWeight: 600,
+            textDecoration: "none",
+            color: "#059669",
+          }}
+        >
+          {t.link}
+        </a>
+      </div>
     </div>
   );
 }
