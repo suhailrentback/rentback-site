@@ -1,43 +1,26 @@
-import React from "react";
+// app/legal/layout.tsx
 import Link from "next/link";
+import type { ReactNode } from "react";
 
-const BRAND = {
-  primary: "#059669",
-  ring: "rgba(5,150,105,0.20)",
-  bg: "#f6faf8",
-  surface: "#ffffff",
-  text: "#0b0b0b",
-} as const;
+export const dynamic = "force-static";
 
-const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({
-  size = 20,
-  stroke = BRAND.primary,
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke={stroke}
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden
-  >
-    <path d="M3 11.5L12 4l9 7.5" />
-    <path d="M5 10v9h14v-9" />
-  </svg>
-);
-
-export default function LegalLayout({ children }: { children: React.ReactNode }) {
+export default function LegalLayout({ children }: { children: ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh", background: BRAND.bg, color: BRAND.text }}>
-      {/* Header (matches app chrome) */}
+    <section
+      style={{
+        minHeight: "100vh",
+        background: "#f6faf8",
+        color: "#0b0b0b",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* Header */}
       <header
         style={{
           position: "sticky",
           top: 0,
-          zIndex: 20,
+          zIndex: 10,
           height: 56,
           display: "flex",
           alignItems: "center",
@@ -48,53 +31,61 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
           borderBottom: "1px solid rgba(0,0,0,0.06)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
-          <BrandLogo />
-          RentBack — Legal
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: "#059669" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 11.5L12 4l9 7.5" />
+            <path d="M5 10v9h14v-9" />
+          </svg>
+          RentBack
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+
+        {/* Language toggle via query param (keeps current path) */}
+        <nav style={{ display: "flex", gap: 8 }}>
           <Link
-            href="/"
+            href="?lang=en"
+            prefetch={false}
             style={{
               padding: "8px 12px",
-              borderRadius: 8,
-              border: `1px solid ${BRAND.ring}`,
-              background: BRAND.surface,
+              borderRadius: 999,
+              border: "1px solid rgba(5,150,105,0.20)",
+              background: "#ffffff",
               fontWeight: 600,
             }}
           >
-            ← Back to App
+            English
           </Link>
-        </div>
+          <Link
+            href="?lang=ur"
+            prefetch={false}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 999,
+              border: "1px solid rgba(5,150,105,0.20)",
+              background: "#ffffff",
+              fontWeight: 600,
+            }}
+          >
+            اردو
+          </Link>
+        </nav>
       </header>
 
-      {/* Local nav */}
-      <nav
-        style={{
-          position: "sticky",
-          top: 56,
-          zIndex: 10,
-          background: BRAND.surface,
-          borderBottom: "1px solid rgba(0,0,0,0.06)",
-        }}
-      >
-        <div style={{ display: "flex", gap: 12, padding: "10px 14px", flexWrap: "wrap" }}>
-          <Link href="/legal/privacy" style={{ fontWeight: 600, color: BRAND.primary }}>
-            Privacy Policy
-          </Link>
-          <Link href="/legal/terms" style={{ fontWeight: 600, color: BRAND.primary }}>
-            Terms of Service
-          </Link>
-          <Link href="/legal/sandbox" style={{ fontWeight: 600, color: BRAND.primary }}>
-            Sandbox Plan
-          </Link>
+      {/* Body container */}
+      <main style={{ flex: 1, padding: 16 }}>
+        <div
+          style={{
+            margin: "0 auto",
+            maxWidth: 860,
+            borderRadius: 16,
+            background: "#ffffff",
+            border: "1px solid rgba(0,0,0,0.06)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+            padding: 20,
+          }}
+        >
+          {children}
         </div>
-      </nav>
-
-      <main style={{ padding: 16, maxWidth: 840, margin: "0 auto" }}>{children}</main>
-      <footer style={{ padding: 16, opacity: 0.7, fontSize: 12, textAlign: "center" }}>
-        © {new Date().getFullYear()} RentBack
-      </footer>
-    </div>
+      </main>
+    </section>
   );
 }
