@@ -1,25 +1,43 @@
-// Server component
-export const dynamic = "force-static";
-
-type Lang = "en" | "ur";
-function getLang(sp?: { [k: string]: string | string[] | undefined }): Lang {
-  const v = (sp?.lang ?? "en");
-  const s = Array.isArray(v) ? v[0] : v;
-  return s === "ur" ? "ur" : "en";
-}
-
-export default function Page({ searchParams }: { searchParams?: { [k: string]: string | string[] | undefined } }) {
-  const lang = getLang(searchParams);
+export default function Page({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
+  const lang = (searchParams?.lang === "ur" ? "ur" : "en") as "en" | "ur";
   const dir = lang === "ur" ? "rtl" : "ltr";
 
+  const t = {
+    en: {
+      title: "SBP Regulatory Sandbox Status",
+      body:
+        "Preparation is complete (materials & partner outreach). Draft application is ready. We’re awaiting the next submission window.",
+      list: [
+        "Use of licensed PSO/PSP/EMI partners",
+        "Data protection controls defined",
+        "Testing plan & risk register prepared",
+      ],
+    },
+    ur: {
+      title: "SBP ریگولیٹری سینڈ باکس اسٹیٹس",
+      body:
+        "تیاری مکمل (مواد اور پارٹنر آؤٹ ریچ)۔ ڈرافٹ درخواست تیار۔ اگلی سبمیشن ونڈو کا انتظار ہے۔",
+      list: [
+        "لائسنس یافتہ PSO/PSP/EMI پارٹنرز کا استعمال",
+        "ڈیٹا پروٹیکشن کنٹرولز متعین",
+        "ٹیسٹنگ پلان اور رسک رجسٹر تیار",
+      ],
+    },
+  }[lang];
+
   return (
-    <main dir={dir} className="mx-auto max-w-3xl px-4 py-12 prose prose-zinc dark:prose-invert">
-      <h1>{lang === "en" ? "Regulatory Sandbox Status" : "ریگولیٹری سینڈ باکس اسٹیٹس"}</h1>
-      <ul>
-        <li>{lang === "en" ? "Preparation complete (materials & partner outreach)" : "تیاری مکمل (سامان اور پارٹنر آؤٹ ریچ)"}</li>
-        <li>{lang === "en" ? "Draft application ready" : "ڈرافٹ درخواست تیار"}</li>
-        <li>{lang === "en" ? "Awaiting sandbox submission window" : "سینڈ باکس جمع کرانے کی ونڈو کا انتظار"}</li>
+    <article dir={dir}>
+      <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 10 }}>{t.title}</h1>
+      <p style={{ lineHeight: 1.7 }}>{t.body}</p>
+      <ul style={{ marginTop: 12, lineHeight: 1.8, paddingInlineStart: 18 }}>
+        {t.list.map((x, i) => (
+          <li key={i}>{x}</li>
+        ))}
       </ul>
-    </main>
+    </article>
   );
 }
