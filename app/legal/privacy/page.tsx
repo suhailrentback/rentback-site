@@ -1,39 +1,20 @@
-// app/legal/privacy/page.tsx
-export const metadata = {
-  title: "Privacy Policy — RentBack",
-  description: "How RentBack handles your data in Pakistan.",
-};
-
 export default function PrivacyPage() {
   return (
-    <>
-      <div className="rb-legal-pill">Updated: 3 September 2025</div>
-      <h1>Privacy Policy</h1>
-      <p>
-        We handle your information under Pakistani law and relevant SBP directives. We collect only
-        what’s needed to operate RentBack and improve the service.
+    <article>
+      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Privacy Policy</h1>
+      <p style={{ opacity: 0.75 }}>Last updated: Sept 2024 (demo)</p>
+      <p style={{ marginTop: 12, lineHeight: 1.7 }}>
+        This demo does not process real payments. We store minimal local data in your browser for feature functionality
+        (demo payments, redemptions, event log) and optional analytics if you consent. You may clear your data anytime
+        via the QA Panel (Reset Demo Data).
       </p>
-
-      <h2>What we collect</h2>
-      <ul>
-        <li>Contact details (email, phone), city, language.</li>
-        <li>Technical data (limited analytics if you consent).</li>
+      <h2 style={{ marginTop: 16, fontWeight: 700 }}>Data We Store</h2>
+      <ul style={{ lineHeight: 1.7 }}>
+        <li>LocalStorage entries for demo flows (client-side only).</li>
+        <li>Optional logging to our Sheet endpoint when configured.</li>
       </ul>
-
-      <h2>How we use it</h2>
-      <ul>
-        <li>Waitlist and product updates you request.</li>
-        <li>Service operations, fraud prevention, and support.</li>
-      </ul>
-
-      <h2>Retention & deletion</h2>
-      <p>
-        We keep data only as long as needed for the purposes above or to meet legal requirements.
-        You can request deletion at any time at <a href="mailto:help@rentback.app">help@rentback.app</a>.
-      </p>
-
-      <h2>Contact</h2>
+      <h2 style={{ marginTop: 16, fontWeight: 700 }}>Contact</h2>
       <p>help@rentback.app</p>
-    </>
+    </article>
   );
 }
