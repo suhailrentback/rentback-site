@@ -1,17 +1,18 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
+import SandboxBanner from "../../components/SandboxBanner";
 
 /**
  * RentBack — Unified App Prototype (single Preview)
  * - Brand palette
  * - EN/UR i18n with toggle (and RTL for UR)
  * - Bottom nav: Home, Pay, Rewards, Support, Profile
- * - Right drawer: Status, Security & Privacy, Rewards, About, Founder, Privacy, Terms
+ * - Right drawer: Status, Security & Privacy, Rewards, About, Founder, Privacy, Terms, Complaints
  * - Role switch: Tenant / Landlord
  * - KYC banner → Profile
  * - Demo Payments: create / mark sent / refund + receipt modal + CSV + Sheet logging
  * - Rewards: PK catalog → redeem modal → local list + receipt modal + Sheet logging
- * - LocalStorage persistence for payments and redemptions
+ * - LocalStorage persistence for payments and redemptions; lang persistence
  */
 
 // ---------- Brand ----------
@@ -287,6 +288,7 @@ const copy = {
       rewards: "Rewards",
       about: "About",
       founder: "Founder",
+      complaints: "Complaints",
       privacy: "Privacy Policy",
       terms: "Terms of Service",
       role: "Role",
@@ -405,6 +407,7 @@ const copy = {
       rewards: "انعامات",
       about: "متعلق",
       founder: "بانی",
+      complaints: "شکایات",
       privacy: "پرائیویسی پالیسی",
       terms: "شرائطِ استعمال",
       role: "کردار",
@@ -455,7 +458,7 @@ const copy = {
       title: "انعامات",
       subtitle: "پاکستان کے لیے منتخب سہولتیں",
       redeem: "ریڈیم",
-      choose: "رقم منتخب کریں",
+      choose: "ڈینامینیشن منتخب کریں",
       confirm: "ریڈیم کی تصدیق",
       cancel: "منسوخ",
       recent: "حالیہ ریڈیمپشنز",
@@ -1346,7 +1349,7 @@ const RewardsTab: React.FC<{
   return (
     <div>
       <SectionTitle title={t.rewards.title} subtitle={t.rewards.subtitle} />
-      <RewardsGrid t={t} onRedeem={onOpenModal} />
+      <RewardsGrid t={t} onRedeem={onRedeem} />
 
       <div style={{ height: 16 }} />
       <SectionTitle title={t.rewards.recent} />
@@ -1557,15 +1560,14 @@ const App: React.FC = () => {
     } catch {}
   }, [lang, dir]);
 
-  // --- added: load saved language once ---
+  // Load saved language once (persisted across sessions)
   useEffect(() => {
     try {
       const saved = localStorage.getItem("rb-lang");
-      if (saved === "en" || saved === "ur") setLang(saved as "en" | "ur");
+      if (saved === "en" || saved === "ur") setLang(saved as any);
     } catch {}
   }, []);
-
-  // --- added: persist language on change ---
+  // Persist language whenever it changes
   useEffect(() => {
     try {
       localStorage.setItem("rb-lang", lang);
@@ -1748,8 +1750,13 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main */}
-      <main style={{ flex: 1, padding: 14, paddingBottom: 80 }}>{content}</main>
+      {/* Main with Sandbox Banner */}
+      <main style={{ flex: 1, padding: 14, paddingBottom: 80 }}>
+        <div style={{ marginBottom: 10 }}>
+          <SandboxBanner lang={lang} />
+        </div>
+        {content}
+      </main>
 
       {/* Bottom Nav */}
       <nav
@@ -1842,8 +1849,15 @@ const App: React.FC = () => {
             <Row onClick={() => { setTab("rewards"); setMenuOpen(false); }}>{t.drawer.rewards}</Row>
             <Row onClick={() => { setTab("about"); setMenuOpen(false); }}>{t.drawer.about}</Row>
             <Row onClick={() => { setTab("founder"); setMenuOpen(false); }}>{t.drawer.founder}</Row>
-            <Row onClick={() => { window.open(`/legal/privacy?lang=${lang}`, "_blank"); }}>{t.drawer.privacy}</Row>
-            <Row onClick={() => { window.open(`/legal/terms?lang=${lang}`, "_blank"); }}>{t.drawer.terms}</Row>
+            <Row onClick={() => { window.open(`/legal/complaints?lang=${lang}`, "_blank"); }}>
+              {t.drawer.complaints}
+            </Row>
+            <Row onClick={() => { window.open(`/legal/privacy?lang=${lang}`, "_blank"); }}>
+              {t.drawer.privacy}
+            </Row>
+            <Row onClick={() => { window.open(`/legal/terms?lang=${lang}`, "_blank"); }}>
+              {t.drawer.terms}
+            </Row>
 
             <div style={{ height: 6 }} />
             <SectionTitle title={t.drawer.role} subtitle={t.drawer.roleHint} />
