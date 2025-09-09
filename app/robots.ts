@@ -1,16 +1,21 @@
-// app/robots.ts
-import type { MetadataRoute } from "next";
+import { NextResponse } from "next/server";
 
-export default function robots(): MetadataRoute.Robots {
-  return {
-    rules: [
-      {
-        userAgent: "*",
-        allow: "/",
-        disallow: ["/admin"],
-      },
-    ],
-    sitemap: "https://rentback.app/sitemap.xml",
-    host: "https://rentback.app",
-  };
+export const dynamic = "force-static";
+
+export function GET() {
+  const isProd = process.env.VERCEL_ENV === "production";
+  const body = isProd
+    ? [
+        "User-agent: *",
+        "Allow: /",
+        "Sitemap: https://rentback.app/sitemap.xml",
+      ].join("\n")
+    : [
+        "User-agent: *",
+        "Disallow: /",
+      ].join("\n");
+
+  return new NextResponse(body, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
