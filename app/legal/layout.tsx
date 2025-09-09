@@ -1,21 +1,87 @@
-// app/legal/layout.tsx
-import Link from "next/link";
-import type { ReactNode } from "react";
+"use client";
 
-export const dynamic = "force-static";
+import React from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
-export default function LegalLayout({ children }: { children: ReactNode }) {
+/** Light brand tokens to match the app header */
+const BRAND = {
+  primary: "#059669",
+  bg: "#f6faf8",
+  surface: "#ffffff",
+  ring: "rgba(0,0,0,0.08)",
+  text: "#0b0b0b",
+} as const;
+
+const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({
+  size = 20,
+  stroke = BRAND.primary,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={stroke}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M3 11.5L12 4l9 7.5" />
+    <path d="M5 10v9h14v-9" />
+  </svg>
+);
+
+const Pill: React.FC<
+  { active?: boolean; onClick?: () => void; children: React.ReactNode }
+> = ({ active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    style={{
+      padding: "8px 12px",
+      borderRadius: 999,
+      border: `1px solid ${active ? BRAND.primary : BRAND.ring}`,
+      background: active ? "#ecfdf5" : BRAND.surface,
+      color: active ? BRAND.primary : BRAND.text,
+      cursor: "pointer",
+      fontWeight: 600,
+    }}
+  >
+    {children}
+  </button>
+);
+
+const LangSwitch: React.FC = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const sp = useSearchParams();
+  const lang = (sp.get("lang") === "ur" ? "ur" : "en") as "en" | "ur";
+
+  const setLang = (next: "en" | "ur") => {
+    const nextParams = new URLSearchParams(sp?.toString() || "");
+    nextParams.set("lang", next);
+    router.replace(`${pathname}?${nextParams.toString()}`);
+  };
+
   return (
-    <section
+    <div style={{ display: "flex", gap: 8 }}>
+      <Pill active={lang === "en"} onClick={() => setLang("en")}>English</Pill>
+      <Pill active={lang === "ur"} onClick={() => setLang("ur")}>اردو</Pill>
+    </div>
+  );
+};
+
+export default function LegalLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div
       style={{
         minHeight: "100vh",
-        background: "#f6faf8",
-        color: "#0b0b0b",
+        background: BRAND.bg,
+        color: BRAND.text,
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {/* Header */}
       <header
         style={{
           position: "sticky",
@@ -27,65 +93,22 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
           justifyContent: "space-between",
           padding: "0 14px",
           background: "#ffffffcc",
+          borderBottom: `1px solid ${BRAND.ring}`,
           backdropFilter: "saturate(1.8) blur(8px)",
-          borderBottom: "1px solid rgba(0,0,0,0.06)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: "#059669" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M3 11.5L12 4l9 7.5" />
-            <path d="M5 10v9h14v-9" />
-          </svg>
-          RentBack
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
+          <BrandLogo />
+          <span>RentBack</span>
         </div>
-
-        {/* Language toggle via query param (keeps current path) */}
-        <nav style={{ display: "flex", gap: 8 }}>
-          <Link
-            href="?lang=en"
-            prefetch={false}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 999,
-              border: "1px solid rgba(5,150,105,0.20)",
-              background: "#ffffff",
-              fontWeight: 600,
-            }}
-          >
-            English
-          </Link>
-          <Link
-            href="?lang=ur"
-            prefetch={false}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 999,
-              border: "1px solid rgba(5,150,105,0.20)",
-              background: "#ffffff",
-              fontWeight: 600,
-            }}
-          >
-            اردو
-          </Link>
-        </nav>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <LangSwitch />
+        </div>
       </header>
 
-      {/* Body container */}
-      <main style={{ flex: 1, padding: 16 }}>
-        <div
-          style={{
-            margin: "0 auto",
-            maxWidth: 860,
-            borderRadius: 16,
-            background: "#ffffff",
-            border: "1px solid rgba(0,0,0,0.06)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
-            padding: 20,
-          }}
-        >
-          {children}
-        </div>
+      <main style={{ padding: 14, width: "100%", maxWidth: 860, margin: "0 auto" }}>
+        {children}
       </main>
-    </section>
+    </div>
   );
 }
