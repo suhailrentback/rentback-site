@@ -1,32 +1,33 @@
-import type { NextRequest } from "next/server";
+// middleware.ts
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export const config = {
+  // Run on everything except static assets & metadata routes
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|icon.*|apple-touch-icon.*).*)",
+  ],
+};
 
 export function middleware(req: NextRequest) {
-  const res = NextResponse.next();
+  const url = req.nextUrl.clone();
+  const host = (req.headers.get("host") || "").toLowerCase().split(":")[0];
 
-  // Minimal secure defaults
-  res.headers.set("X-Frame-Options", "SAMEORIGIN");
-  res.headers.set("X-Content-Type-Options", "nosniff");
-  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.headers.set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
-  res.headers.set(
-    "Strict-Transport-Security",
-    "max-age=31536000; includeSubDomains; preload"
-  );
+  // All requests coming to app.rentback.app should see the product UI
+  // We keep the URL pretty ("/") and serve content from "/app" via REWRITE.
+  if (host === "app.rentback.app" || host.startsWith("app.")) {
+    // Pretty root → serve /app
+    if (url.pathname === "/" || url.pathname === "") {
+      url.pathname = "/app";
+      return NextResponse.rewrite(url);
+    }
+    // Optional nicety: if someone types /app on the subdomain, redirect to pretty "/"
+    if (url.pathname === "/app") {
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
+  }
 
-  // Relaxed CSP starter (tighten later if needed)
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "connect-src 'self' https:",
-    "font-src 'self' data:",
-    "frame-ancestors 'self'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join("; ");
-  res.headers.set("Content-Security-Policy", csp);
-
-  return res;
+  // Everything else (rentback.app) falls through to your landing site.
+  return NextResponse.next();
 }
