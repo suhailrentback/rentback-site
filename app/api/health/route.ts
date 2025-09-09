@@ -1,17 +1,8 @@
-// Server route (App Router)
-import { NextResponse } from "next/server";
+export const runtime = "edge";
 
 export async function GET() {
-  return NextResponse.json({
-    ok: true,
-    service: "rentback",
-    env: process.env.VERCEL_ENV ?? "dev",
-    commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
-    time: new Date().toISOString(),
-  });
-}
-
-// Optional – respond to HEAD quickly for uptime checks
-export async function HEAD() {
-  return new Response(null, { status: 200 });
+  return new Response(
+    JSON.stringify({ ok: true, service: "rentback", time: new Date().toISOString() }),
+    { headers: { "content-type": "application/json" }, status: 200 }
+  );
 }
