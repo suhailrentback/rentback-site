@@ -1,13 +1,21 @@
 import type { MetadataRoute } from "next";
-const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "https://app.rentback.app";
+
+const base = "https://rentback.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date();
-  return [
-    { url: `${origin}/`, lastModified, changeFrequency: "weekly", priority: 1 },
-    { url: `${origin}/app`, lastModified, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${origin}/legal/privacy`, lastModified, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${origin}/legal/terms`, lastModified, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${origin}/legal/sandbox`, lastModified, changeFrequency: "weekly", priority: 0.4 },
+  const routes = [
+    "/",
+    "/legal/privacy",
+    "/legal/terms",
+    "/legal/rewards",
+    "/legal/complaints",
+    "/legal/sandbox",
   ];
+  const now = new Date().toISOString();
+  return routes.map((p) => ({
+    url: base + p,
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: p === "/" ? 1 : 0.5,
+  }));
 }
