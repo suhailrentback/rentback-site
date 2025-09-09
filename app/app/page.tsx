@@ -1,7 +1,5 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { FLAGS } from "../../lib/flags";
 
 /**
  * RentBack — Unified App Prototype (single Preview)
@@ -14,7 +12,6 @@ import { FLAGS } from "../../lib/flags";
  * - Demo Payments: create / mark sent / refund + receipt modal + CSV + Sheet logging
  * - Rewards: PK catalog → redeem modal → local list + receipt modal + Sheet logging
  * - LocalStorage persistence for payments and redemptions
- * - (New) Admin Dashboard link + Sandbox Plan in drawer
  */
 
 // ---------- Brand ----------
@@ -292,8 +289,6 @@ const copy = {
       founder: "Founder",
       privacy: "Privacy Policy",
       terms: "Terms of Service",
-      sandbox: "Sandbox Plan",
-      admin: "Admin Dashboard",
       role: "Role",
       roleHint: "Switch experience",
       tenant: "Tenant",
@@ -401,7 +396,7 @@ const copy = {
   },
   ur: {
     appName: "RentBack",
-    menu: "مینیو",
+    menu: "می뉴",
     nav: { home: "ہوم", pay: "ادائیگی", rewards: "انعامات", support: "مدد", profile: "پروفائل" },
     drawer: {
       explore: "ایکسپلور",
@@ -412,8 +407,6 @@ const copy = {
       founder: "بانی",
       privacy: "پرائیویسی پالیسی",
       terms: "شرائطِ استعمال",
-      sandbox: "سینڈ باکس پلان",
-      admin: "ایڈمن ڈیش بورڈ",
       role: "کردار",
       roleHint: "تجربہ تبدیل کریں",
       tenant: "کرایہ دار",
@@ -528,7 +521,6 @@ async function postToSheet(payload: Record<string, any>) {
     if (!endpoint) return;
     const key = (window as any).RB_PAYMENTS_SECRET as string | undefined;
     const body = key ? { ...payload, key } : payload;
-    await new Promise((r) => setTimeout(r, 0)); // keep UI snappy
     await fetch(endpoint, {
       method: "POST",
       mode: "no-cors",
@@ -1540,8 +1532,6 @@ const FounderScreen: React.FC<{ t: I18n }> = ({ t }) => (
 
 // ---------- App ----------
 const App: React.FC = () => {
-  const router = useRouter();
-
   const [tab, setTab] = useState<Tab>("home");
   const [menuOpen, setMenuOpen] = useState(false);
   const [role, setRole] = useState<Role>("tenant");
@@ -1631,28 +1621,6 @@ const App: React.FC = () => {
       utmMedium: utm.medium,
       utmCampaign: utm.campaign,
     });
-  };
-
-  const openAdmin = () => {
-    if (!FLAGS.ENABLE_ADMIN) {
-      alert("Admin disabled.");
-      return;
-    }
-    try {
-      if (localStorage.getItem("rb-admin-ok") === "1") {
-        router.push("/admin");
-        return;
-      }
-    } catch {}
-    const code = typeof window !== "undefined" ? window.prompt("Enter admin code") : null;
-    if (code && code === FLAGS.ADMIN_CODE) {
-      try {
-        localStorage.setItem("rb-admin-ok", "1");
-      } catch {}
-      router.push("/admin");
-    } else if (code !== null) {
-      alert("Incorrect code");
-    }
   };
 
   const content = useMemo(() => {
@@ -1860,15 +1828,13 @@ const App: React.FC = () => {
             <Row onClick={() => { setTab("about"); setMenuOpen(false); }}>{t.drawer.about}</Row>
             <Row onClick={() => { setTab("founder"); setMenuOpen(false); }}>{t.drawer.founder}</Row>
 
-            {/* New: Sandbox Plan + Legal (under /legal) */}
-            <Row onClick={() => { window.open("/legal/sandbox", "_blank"); }}>{t.drawer.sandbox}</Row>
-            <Row onClick={() => { window.open("/legal/privacy", "_blank"); }}>{t.drawer.privacy}</Row>
-            <Row onClick={() => { window.open("/legal/terms", "_blank"); }}>{t.drawer.terms}</Row>
-
-            {/* New: Admin (code-gated) */}
-            {FLAGS.ENABLE_ADMIN ? (
-              <Row onClick={() => { openAdmin(); setMenuOpen(false); }}>{t.drawer.admin}</Row>
-            ) : null}
+            {/* UPDATED: open bilingual legal pages with current language */}
+            <Row onClick={() => { window.open(`/legal/privacy?lang=${lang}`, "_blank"); }}>
+              {t.drawer.privacy}
+            </Row>
+            <Row onClick={() => { window.open(`/legal/terms?lang=${lang}`, "_blank"); }}>
+              {t.drawer.terms}
+            </Row>
 
             <div style={{ height: 6 }} />
             <SectionTitle title={t.drawer.role} subtitle={t.drawer.roleHint} />
