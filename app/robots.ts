@@ -1,21 +1,18 @@
-import { NextResponse } from "next/server";
+// No "use client"
+import type { MetadataRoute } from "next";
 
-export const dynamic = "force-static";
+const origin =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://app.rentback.app";
 
-export function GET() {
-  const isProd = process.env.VERCEL_ENV === "production";
-  const body = isProd
-    ? [
-        "User-agent: *",
-        "Allow: /",
-        "Sitemap: https://rentback.app/sitemap.xml",
-      ].join("\n")
-    : [
-        "User-agent: *",
-        "Disallow: /",
-      ].join("\n");
-
-  return new NextResponse(body, {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
-  });
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/api/*"],
+      },
+    ],
+    sitemap: `${origin}/sitemap.xml`,
+  };
 }
