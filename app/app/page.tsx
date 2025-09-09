@@ -1349,7 +1349,7 @@ const RewardsTab: React.FC<{
   return (
     <div>
       <SectionTitle title={t.rewards.title} subtitle={t.rewards.subtitle} />
-      <RewardsGrid t={t} onRedeem={onRedeem} />
+      <RewardsGrid t={t} onRedeem={onOpenModal} />
 
       <div style={{ height: 16 }} />
       <SectionTitle title={t.rewards.recent} />
