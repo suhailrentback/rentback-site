@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import SandboxBanner from "./components/SandboxBanner";
+import SandboxBanner from "../components/SandboxBanner"; // ✅ FIXED PATH
 
 /**
  * RentBack — Landing Page (for rentback.app)
@@ -9,7 +9,7 @@ import SandboxBanner from "./components/SandboxBanner";
  * - Language persisted to localStorage ("rb-lang")
  * - Simple hero + features + waitlist form (Email, Phone, City)
  * - Form posts to Google Apps Script endpoint (no-cors)
- * - Footer with Privacy / Terms / Founder (modal), Complaints, and Language toggle
+ * - Footer with Privacy / Terms / Founder (modal), and Language toggle
  * - No extra deps (inline styles only)
  */
 
@@ -65,7 +65,6 @@ const copy: Record<"en" | "ur", I18n> = {
       privacy: "Privacy",
       terms: "Terms",
       founder: "Founder",
-      complaints: "Complaints",
       lang: "Language",
       urdu: "اردو",
       english: "English",
@@ -107,7 +106,6 @@ const copy: Record<"en" | "ur", I18n> = {
       privacy: "پرائیویسی",
       terms: "شرائط",
       founder: "بانی",
-      complaints: "شکایات",
       lang: "زبان",
       urdu: "اردو",
       english: "English",
@@ -232,7 +230,7 @@ export default function LandingPage() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("rb-lang");
-      if (saved === "en" || saved === "ur") setLang(saved as any);
+      if (saved === "en" || saved === "ur") setLang(saved);
     } catch {}
   }, []);
   // persist on change
@@ -373,9 +371,9 @@ export default function LandingPage() {
         <div />
       </header>
 
-      {/* Sandbox banner */}
-      <div style={{ maxWidth: 1120, margin: "10px auto 0", padding: "0 16px" }}>
-        <SandboxBanner lang={lang} />
+      {/* ✅ Sandbox banner just under the header */}
+      <div style={{ maxWidth: 1120, margin: "12px auto 0", padding: "0 16px" }}>
+        <SandboxBanner />
       </div>
 
       {/* Main */}
@@ -583,12 +581,6 @@ export default function LandingPage() {
               style={linkBtn}
             >
               {t.footer.terms}
-            </button>
-            <button
-              onClick={() => window.open(`/legal/complaints?lang=${lang}`, "_blank")}
-              style={linkBtn}
-            >
-              {t.footer.complaints}
             </button>
             <FounderButton lang={lang} t={t} />
             <div style={{ width: 1, height: 16, background: "rgba(0,0,0,0.08)" }} />
