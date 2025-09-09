@@ -1,46 +1,35 @@
-// app/legal/sandbox/page.tsx
-export const dynamic = "force-static";
-
+type PageProps = { searchParams?: { [k: string]: string | string[] | undefined } };
 type Lang = "en" | "ur";
 
-export const metadata = {
-  title: "Sandbox / Pilot — RentBack",
-  description: "Overview of pilot/sandbox cohorts and how we operate with licensed partners.",
+const t = {
+  en: {
+    title: "SBP Sandbox Status",
+    points: [
+      "Preparation complete (materials & partner outreach).",
+      "Draft application ready.",
+      "Awaiting sandbox submission window.",
+    ],
+  },
+  ur: {
+    title: "SBP سینڈ باکس اسٹیٹس",
+    points: [
+      "تیاری مکمل (مواد اور پارٹنر آؤٹ ریچ)۔",
+      "ڈرافٹ درخواست تیار۔",
+      "سینڈ باکس جمع کرانے کی ونڈو کا انتظار۔",
+    ],
+  },
 };
 
-export default function SandboxPage({
-  searchParams,
-}: { searchParams: { lang?: Lang } }) {
-  const lang: Lang = searchParams?.lang === "ur" ? "ur" : "en";
+export default function SandboxPage({ searchParams }: PageProps) {
+  const lang = (searchParams?.lang === "ur" ? "ur" : "en") as Lang;
   const dir = lang === "ur" ? "rtl" : "ltr";
+  const c = t[lang];
   return (
-    <article style={{ lineHeight: 1.7 }} dir={dir} lang={lang}>
-      {lang === "en" ? <En /> : <Ur />} 
-    </article>
-  );
-}
-
-function En() {
-  return (
-    <>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>Sandbox / Pilot</h1>
-      <p>
-        RentBack may run closed pilots with licensed partners. Cohorts are invite-only, capped, and
-        subject to limits, KYC/AML, and feature gating. Feedback is welcome at{" "}
-        <a href="mailto:help@rentback.app">help@rentback.app</a>.
-      </p>
-    </>
-  );
-}
-function Ur() {
-  return (
-    <>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>سینڈ باکس / پائلٹ</h1>
-      <p>
-        RentBack لائسنس یافتہ پارٹنرز کے ساتھ بند پائلٹس چلا سکتا ہے۔ گروپس دعوتی، محدود اور
-        KYC/AML و فیچر حدود کے تابع ہوتے ہیں۔ فیڈبیک:{" "}
-        <a href="mailto:help@rentback.app">help@rentback.app</a>
-      </p>
-    </>
+    <div dir={dir}>
+      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>{c.title}</h1>
+      <ul style={{ paddingInlineStart: 18, lineHeight: 1.7 }}>
+        {c.points.map((p, i) => <li key={i}>{p}</li>)}
+      </ul>
+    </div>
   );
 }
