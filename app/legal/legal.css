@@ -1,0 +1,89 @@
+/* app/legal/legal.css */
+:root {
+  --rb-primary: #059669;
+  --rb-bg: #f6faf8;
+  --rb-surface: #ffffff;
+  --rb-border: rgba(0,0,0,0.08);
+  --rb-text: #0b0b0b;
+}
+
+html, body {
+  background: var(--rb-bg);
+  color: var(--rb-text);
+  margin: 0;
+  padding: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+}
+
+.rb-legal-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px;
+  background: #ffffffcc;
+  backdrop-filter: saturate(1.8) blur(8px);
+  border-bottom: 1px solid var(--rb-border);
+}
+
+.rb-legal-brand {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--rb-primary);
+  font-weight: 700;
+}
+
+.rb-legal-link {
+  color: var(--rb-primary);
+  text-decoration: none;
+  font-weight: 600;
+  border: 1px solid rgba(5,150,105,0.20);
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--rb-surface);
+}
+
+.rb-legal-main {
+  padding: 18px;
+  display: grid;
+  place-items: start center;
+}
+
+.rb-legal-card {
+  max-width: 760px;
+  width: 100%;
+  background: var(--rb-surface);
+  border: 1px solid var(--rb-border);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+}
+
+.rb-legal-card h1 {
+  margin: 0 0 10px 0;
+  font-size: 22px;
+}
+
+.rb-legal-card h2 {
+  margin-top: 18px;
+  font-size: 16px;
+}
+
+.rb-legal-card p, .rb-legal-card li {
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.rb-legal-pill {
+  display: inline-block;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(5,150,105,0.20);
+  color: var(--rb-primary);
+  background: #ecfdf5;
+  font-weight: 700;
+}
