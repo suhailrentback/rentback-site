@@ -1,3 +1,9 @@
+// app/legal/sandbox/page.tsx
+export const metadata = {
+  title: "SBP Sandbox Status — RentBack",
+  description: "High-level checklist for SBP sandbox preparation.",
+};
+
 type PageProps = { searchParams?: { [k: string]: string | string[] | undefined } };
 type Lang = "en" | "ur";
 
