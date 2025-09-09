@@ -1,6 +1,30 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import { BRAND } from "../../lib/tokens";
+
+/**
+ * RentBack — Unified App Prototype (single Preview)
+ * - Brand palette
+ * - EN/UR i18n with toggle (and RTL for UR)
+ * - Bottom nav: Home, Pay, Rewards, Support, Profile
+ * - Right drawer: Status, Security & Privacy, Rewards, About, Founder, Privacy, Terms
+ * - Role switch: Tenant / Landlord
+ * - KYC banner → Profile
+ * - Demo Payments: create / mark sent / refund + receipt modal + CSV + Sheet logging
+ * - Rewards: PK catalog → redeem modal → local list + receipt modal + Sheet logging
+ * - LocalStorage persistence for payments and redemptions
+ */
+
+// ---------- Brand ----------
+const BRAND = {
+  primary: "#059669", // emerald-600
+  primarySoft: "#10b981",
+  primaryLite: "#34d399",
+  teal: "#14b8a6",
+  bg: "#f6faf8",
+  surface: "#ffffff",
+  text: "#0b0b0b",
+  ring: "rgba(5,150,105,0.20)",
+} as const;
 
 // ---------- Types ----------
 type Tab =
@@ -42,6 +66,8 @@ type Redemption = {
 };
 
 type Utm = { source: string; medium: string; campaign: string };
+
+// Structural i18n type so both EN and UR fit (no literal union errors)
 type I18n = { [key: string]: any };
 
 // ---------- Utils ----------
@@ -370,7 +396,7 @@ const copy = {
   },
   ur: {
     appName: "RentBack",
-    menu: "مینیو",
+    menu: "می뉴",
     nav: { home: "ہوم", pay: "ادائیگی", rewards: "انعامات", support: "مدد", profile: "پروفائل" },
     drawer: {
       explore: "ایکسپلور",
@@ -504,8 +530,7 @@ async function postToSheet(payload: Record<string, any>) {
   } catch {}
 }
 
-// ---------- Modals (PaymentReceiptModal, RedeemModal, RedeemReceiptModal) ----------
-/* ------------- keep your existing modal code unchanged ------------- */
+// ---------- Modals ----------
 const PaymentReceiptModal: React.FC<{
   t: I18n;
   payment: Payment;
@@ -513,51 +538,111 @@ const PaymentReceiptModal: React.FC<{
 }> = ({ t, payment, onClose }) => {
   const date = new Date(payment.ts).toLocaleString("en-PK");
   return (
-    <div role="dialog" aria-modal="true" onClick={onClose} style={{
-      position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.4)",
-      display: "grid", placeItems: "center", padding: 16,
-    }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        width: "100%", maxWidth: 720, background: BRAND.surface, borderRadius: 16,
-        border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: 14, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 70,
+        background: "rgba(0,0,0,0.4)",
+        display: "grid",
+        placeItems: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 720,
+          background: BRAND.surface,
+          borderRadius: 16,
+          border: "1px solid rgba(0,0,0,0.08)",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: 14,
+            borderBottom: "1px solid rgba(0,0,0,0.06)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontWeight: 700,
+              color: BRAND.primary,
+            }}
+          >
             <BrandLogo /> {t.pay.receipt}
           </div>
-          <button onClick={onClose} aria-label="Close"
-            style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}>✕</button>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}
+          >
+            ✕
+          </button>
         </div>
         <div style={{ padding: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div style={{ opacity: 0.7 }}>Ref</div><div style={{ fontWeight: 700 }}>{payment.ref}</div>
+            <div style={{ opacity: 0.7 }}>Ref</div>
+            <div style={{ fontWeight: 700 }}>{payment.ref}</div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <div style={{ opacity: 0.7 }}>Date</div><div>{date}</div>
+            <div style={{ opacity: 0.7 }}>Date</div>
+            <div>{date}</div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <div style={{ opacity: 0.7 }}>{t.pay.landlord}</div><div>{payment.landlord}</div>
+            <div style={{ opacity: 0.7 }}>{t.pay.landlord}</div>
+            <div>{payment.landlord}</div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <div style={{ opacity: 0.7 }}>{t.pay.method}</div><div>{payment.method}</div>
+            <div style={{ opacity: 0.7 }}>{t.pay.method}</div>
+            <div>{payment.method}</div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <div style={{ opacity: 0.7 }}>{t.pay.status}</div><div style={{ fontWeight: 600 }}>{payment.status}</div>
+            <div style={{ opacity: 0.7 }}>{t.pay.status}</div>
+            <div style={{ fontWeight: 600 }}>{payment.status}</div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <div style={{ opacity: 0.7 }}>Amount</div><div style={{ fontWeight: 700 }}>{formatPKR(payment.amount)}</div>
+            <div style={{ opacity: 0.7 }}>Amount</div>
+            <div style={{ fontWeight: 700 }}>{formatPKR(payment.amount)}</div>
           </div>
           <div style={{ marginTop: 12, opacity: 0.7, fontSize: 12 }}>{t.pay.demoNote}</div>
           <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-            <button onClick={() => window.print()} style={{
-              padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-              background: BRAND.surface, fontWeight: 600,
-            }}>{t.pay.print}</button>
-            <button onClick={onClose} style={{
-              padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-              background: BRAND.primary, color: "#fff", fontWeight: 700,
-            }}>{t.pay.close}</button>
+            <button
+              onClick={() => window.print()}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: `1px solid ${BRAND.ring}`,
+                background: BRAND.surface,
+                fontWeight: 600,
+              }}
+            >
+              {t.pay.print}
+            </button>
+            <button
+              onClick={onClose}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: `1px solid ${BRAND.ring}`,
+                background: BRAND.primary,
+                color: "#fff",
+                fontWeight: 700,
+              }}
+            >
+              {t.pay.close}
+            </button>
           </div>
         </div>
       </div>
@@ -574,38 +659,80 @@ const RedeemModal: React.FC<{
   const [denom, setDenom] = useState<number | null>(null);
   if (!reward) return null;
   return (
-    <div role="dialog" aria-modal="true" onClick={onClose} style={{
-      position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.4)",
-      display: "grid", placeItems: "center", padding: 16,
-    }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        width: "100%", maxWidth: 520, background: BRAND.surface, borderRadius: 16,
-        border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 20px 40px rgba(0,0,0,0.25)", padding: 16,
-      }}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 70,
+        background: "rgba(0,0,0,0.4)",
+        display: "grid",
+        placeItems: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 520,
+          background: BRAND.surface,
+          borderRadius: 16,
+          border: "1px solid rgba(0,0,0,0.08)",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+          padding: 16,
+        }}
+      >
         <div style={{ fontWeight: 700, marginBottom: 10 }}>
           {t.rewards.choose}: {reward.title}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {reward.denom.map((d) => (
-            <button key={d} onClick={() => setDenom(d)} style={{
-              padding: "8px 10px", borderRadius: 10,
-              border: `1px solid ${denom === d ? BRAND.primary : BRAND.ring}`,
-              background: denom === d ? "#ecfdf5" : BRAND.surface, fontWeight: 600,
-            }}>
+            <button
+              key={d}
+              onClick={() => setDenom(d)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 10,
+                border: `1px solid ${denom === d ? BRAND.primary : BRAND.ring}`,
+                background: denom === d ? "#ecfdf5" : BRAND.surface,
+                fontWeight: 600,
+              }}
+            >
               {formatPKR(d)}
             </button>
           ))}
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
-          <button onClick={onClose} style={{
-            padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-            background: BRAND.surface, fontWeight: 600,
-          }}>{t.rewards.cancel}</button>
-          <button onClick={() => denom && onConfirm(denom)} disabled={!denom} style={{
-            padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-            background: !denom ? "#f3f4f6" : BRAND.primary, color: !denom ? "#6b7280" : "#fff",
-            fontWeight: 700, opacity: !denom ? 0.6 : 1,
-          }}>{t.rewards.confirm}</button>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: `1px solid ${BRAND.ring}`,
+              background: BRAND.surface,
+              fontWeight: 600,
+            }}
+          >
+            {t.rewards.cancel}
+          </button>
+          <button
+            onClick={() => denom && onConfirm(denom)}
+            disabled={!denom}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: `1px solid ${BRAND.ring}`,
+              background: !denom ? "#f3f4f6" : BRAND.primary,
+              color: !denom ? "#6b7280" : "#fff",
+              fontWeight: 700,
+              opacity: !denom ? 0.6 : 1,
+            }}
+          >
+            {t.rewards.confirm}
+          </button>
         </div>
       </div>
     </div>
@@ -613,55 +740,118 @@ const RedeemModal: React.FC<{
 };
 
 const RedeemReceiptModal: React.FC<{
-  t: I18n; item: Redemption; onClose: () => void;
+  t: I18n;
+  item: Redemption;
+  onClose: () => void;
 }> = ({ t, item, onClose }) => {
   const date = new Date(item.ts).toLocaleString("en-PK");
   return (
-    <div role="dialog" aria-modal="true" onClick={onClose} style={{
-      position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.4)",
-      display: "grid", placeItems: "center", padding: 16,
-    }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        width: "100%", maxWidth: 720, background: BRAND.surface, borderRadius: 16,
-        border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: 14, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 70,
+        background: "rgba(0,0,0,0.4)",
+        display: "grid",
+        placeItems: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 720,
+          background: BRAND.surface,
+          borderRadius: 16,
+          border: "1px solid rgba(0,0,0,0.08)",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: 14,
+            borderBottom: "1px solid rgba(0,0,0,0.06)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontWeight: 700,
+              color: BRAND.primary,
+            }}
+          >
             <BrandLogo /> {t.rewards.receiptTitle}
           </div>
-          <button onClick={onClose} aria-label="Close"
-            style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}>✕</button>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}
+          >
+            ✕
+          </button>
         </div>
         <div style={{ padding: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div style={{ opacity: 0.7 }}>Ref</div><div style={{ fontWeight: 700 }}>{item.ref}</div>
+            <div style={{ opacity: 0.7 }}>Ref</div>
+            <div style={{ fontWeight: 700 }}>{item.ref}</div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <div style={{ opacity: 0.7 }}>Date</div><div>{date}</div>
+            <div style={{ opacity: 0.7 }}>Date</div>
+            <div>{date}</div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             <div style={{ opacity: 0.7 }}>Reward</div>
-            <div>{item.brand} — {item.title} ({formatPKR(item.denomination)})</div>
+            <div>
+              {item.brand} — {item.title} ({formatPKR(item.denomination)})
+            </div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <div style={{ opacity: 0.7 }}>{t.rewards.points}</div><div>{item.points}</div>
+            <div style={{ opacity: 0.7 }}>{t.rewards.points}</div>
+            <div>{item.points}</div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <div style={{ opacity: 0.7 }}>{t.rewards.status}</div><div style={{ fontWeight: 600 }}>{item.status}</div>
+            <div style={{ opacity: 0.7 }}>{t.rewards.status}</div>
+            <div style={{ fontWeight: 600 }}>{item.status}</div>
           </div>
+
           <div style={{ marginTop: 12, opacity: 0.7, fontSize: 12 }}>
             Demo receipt — no real fulfillment performed.
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-            <button onClick={() => window.print()} style={{
-              padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-              background: BRAND.surface, fontWeight: 600,
-            }}>{t.pay.print}</button>
-            <button onClick={onClose} style={{
-              padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-              background: BRAND.primary, color: "#fff", fontWeight: 700,
-            }}>{t.pay.close}</button>
+            <button
+              onClick={() => window.print()}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: `1px solid ${BRAND.ring}`,
+                background: BRAND.surface,
+                fontWeight: 600,
+              }}
+            >
+              {t.pay.print}
+            </button>
+            <button
+              onClick={onClose}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: `1px solid ${BRAND.ring}`,
+                background: BRAND.primary,
+                color: "#fff",
+                fontWeight: 700,
+              }}
+            >
+              {t.pay.close}
+            </button>
           </div>
         </div>
       </div>
@@ -669,37 +859,60 @@ const RedeemReceiptModal: React.FC<{
   );
 };
 
-// ---------- Pages (HomeTab, PayTab, RewardsTab, SupportTab, ProfileTab, StatusScreen, SecurityPrivacy, AboutScreen, FounderScreen) ----------
-/* ------------- keep your existing tab components exactly as you pasted last, unchanged ------------- */
-/* ------------- (I only adjusted imports to use BRAND from lib/tokens) ------------- */
-
+// ---------- Pages ----------
 const HomeTab: React.FC<{
-  t: I18n; role: Role; kyc: KycState; goProfile: () => void;
+  t: I18n;
+  role: Role;
+  kyc: KycState;
+  goProfile: () => void;
 }> = ({ t, role, kyc, goProfile }) => {
-  const headline = role === "tenant" ? t.home.headlineTenant : t.home.headlineLandlord;
+  const headline =
+    role === "tenant" ? t.home.headlineTenant : t.home.headlineLandlord;
   const sub = role === "tenant" ? t.home.subTenant : t.home.subLandlord;
+
   return (
     <div>
       <SectionTitle title={headline} subtitle={sub} />
+
       {kyc !== "verified" ? (
-        <div style={{
-          padding: 14, borderRadius: 16, border: `1px solid ${BRAND.ring}`,
-          background: "linear-gradient(180deg, #f0fdf4, #ffffff)",
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
-        }}>
+        <div
+          style={{
+            padding: 14,
+            borderRadius: 16,
+            border: `1px solid ${BRAND.ring}`,
+            background: "linear-gradient(180deg, #f0fdf4, #ffffff)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
           <div>
             <div style={{ fontWeight: 700 }}>{t.home.kycTitle}</div>
-            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>{t.home.kycSub}</div>
+            <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+              {t.home.kycSub}
+            </div>
           </div>
-          <button onClick={goProfile} style={{
-            padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-            background: BRAND.primary, color: "#fff", fontWeight: 600,
-          }}>{t.home.kycCta}</button>
+          <button
+            onClick={goProfile}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: `1px solid ${BRAND.ring}`,
+              background: BRAND.primary,
+              color: "#fff",
+              fontWeight: 600,
+            }}
+          >
+            {t.home.kycCta}
+          </button>
         </div>
       ) : null}
+
       <div style={{ height: 16 }} />
       <CardVisual />
       <div style={{ height: 16 }} />
+
       {role === "tenant" ? (
         <div style={{ display: "grid", gap: 10 }}>
           <Row right="PKR 120,000">{t.home.tenantRows.pending}</Row>
@@ -728,7 +941,13 @@ type PayTabProps = {
 };
 
 const PayTab: React.FC<PayTabProps> = ({
-  t, payments, addPayment, updatePayment, role, utm, onOpenReceipt,
+  t,
+  payments,
+  addPayment,
+  updatePayment,
+  role,
+  utm,
+  onOpenReceipt,
 }) => {
   const [amount, setAmount] = useState<string>("");
   const [landlord, setLandlord] = useState<string>("");
@@ -761,14 +980,23 @@ const PayTab: React.FC<PayTabProps> = ({
     const id = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
     const ref = `RB-${Math.floor(100000 + Math.random() * 900000)}`;
     const status: PaymentStatus = method === "Bank Transfer" ? "initiated" : "succeeded";
-    const base: Payment = { id, amount: amt, landlord: landlord.trim(), method, status, ts: Date.now(), ref };
+    const base: Payment = {
+      id,
+      amount: amt,
+      landlord: landlord.trim(),
+      method,
+      status,
+      ts: Date.now(),
+      ref,
+    };
     addPayment(base);
     setMessage(
       method === "Bank Transfer"
         ? "Transfer instructions generated below. Mark as sent when done."
         : "Payment succeeded (demo). View receipt below."
     );
-    setAmount(""); setLandlord("");
+    setAmount("");
+    setLandlord("");
     await logPayment(base);
   };
 
@@ -790,143 +1018,328 @@ const PayTab: React.FC<PayTabProps> = ({
   };
 
   const downloadCSV = () => {
-    const headers = ["ref","amount","landlord","method","status","ts","role","utmSource","utmMedium","utmCampaign"];
+    const headers = [
+      "ref",
+      "amount",
+      "landlord",
+      "method",
+      "status",
+      "ts",
+      "role",
+      "utmSource",
+      "utmMedium",
+      "utmCampaign",
+    ];
     const rows = payments.map((p) => [
-      p.ref, String(p.amount), p.landlord, p.method, p.status,
-      new Date(p.ts).toISOString(), role, utm.source, utm.medium, utm.campaign,
+      p.ref,
+      String(p.amount),
+      p.landlord,
+      p.method,
+      p.status,
+      new Date(p.ts).toISOString(),
+      role,
+      utm.source,
+      utm.medium,
+      utm.campaign,
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "rentback-demo-payments.csv"; a.click();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "rentback-demo-payments.csv";
+    a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div>
       <SectionTitle title={t.pay.title} subtitle={t.pay.subtitle} />
+
       <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
-        <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
-          placeholder={t.pay.amount} inputMode="numeric" style={{
-            padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface,
-          }} />
-        <input value={landlord} onChange={(e) => setLandlord(e.target.value)}
-          placeholder={t.pay.landlord} style={{
-            padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface,
-          }} />
-        <select value={method} onChange={(e) => setMethod(e.target.value as Payment["method"])} style={{
-          padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface,
-        }}>
+        <input
+          value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
+          placeholder={t.pay.amount}
+          inputMode="numeric"
+          style={{
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid rgba(0,0,0,0.1)",
+            background: BRAND.surface,
+          }}
+        />
+        <input
+          value={landlord}
+          onChange={(e) => setLandlord(e.target.value)}
+          placeholder={t.pay.landlord}
+          style={{
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid rgba(0,0,0,0.1)",
+            background: BRAND.surface,
+          }}
+        />
+        <select
+          value={method}
+          onChange={(e) => setMethod(e.target.value as Payment["method"])}
+          style={{
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid rgba(0,0,0,0.1)",
+            background: BRAND.surface,
+          }}
+        >
           <option>Bank Transfer</option>
           <option>Card</option>
           <option>Wallet</option>
         </select>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={handleCreate} style={{
-            padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`,
-            background: BRAND.primary, color: "#fff", fontWeight: 700,
-          }}>{t.pay.create}</button>
-          <button onClick={downloadCSV} style={{
-            padding: "12px 14px", borderRadius: 12, border: `1px solid ${BRAND.ring}`,
-            background: BRAND.surface, color: BRAND.primary, fontWeight: 700,
-          }}>{t.pay.csv}</button>
+          <button
+            onClick={handleCreate}
+            style={{
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: `1px solid ${BRAND.ring}`,
+              background: BRAND.primary,
+              color: "#fff",
+              fontWeight: 700,
+            }}
+          >
+            {t.pay.create}
+          </button>
+          <button
+            onClick={downloadCSV}
+            style={{
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: `1px solid ${BRAND.ring}`,
+              background: BRAND.surface,
+              color: BRAND.primary,
+              fontWeight: 700,
+            }}
+          >
+            {t.pay.csv}
+          </button>
         </div>
-        {message ? <div style={{ fontSize: 12, color: BRAND.primary }}>{message}</div> : null}
+        {message ? (
+          <div style={{ fontSize: 12, color: BRAND.primary }}>{message}</div>
+        ) : null}
       </div>
 
+      {/* Active / recent payments */}
       <SectionTitle title={t.pay.recent} />
       <div style={{ display: "grid", gap: 10 }}>
         {payments.length === 0 ? (
           <div style={{ fontSize: 13, opacity: 0.7 }}>No demo payments yet.</div>
         ) : (
-          payments.slice().sort((a, b) => b.ts - a.ts).map((p) => (
-            <div key={p.id} style={{
-              padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface,
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
-                <span>{p.landlord}</span><span>{formatPKR(p.amount)}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                <span>{p.method} • Ref {p.ref}</span>
-                <span style={{ color:
-                  p.status === "succeeded" ? BRAND.primary :
-                  p.status === "sent" ? "#92400e" :
-                  p.status === "refunded" ? "#6b7280" : "#1f2937"
-                }}>
-                  {p.status === "succeeded" ? t.pay.succeeded :
-                   p.status === "sent" ? t.pay.sent :
-                   p.status === "refunded" ? t.pay.refunded : t.pay.instructions}
-                </span>
-              </div>
-              {p.method === "Bank Transfer" && p.status === "initiated" ? (
-                <div style={{ marginTop: 10, fontSize: 12 }}>
-                  <div>{t.pay.transferTo}: <b>{t.pay.collections}</b></div>
-                  <div>{t.pay.iban}: <b>{t.pay.ibanValue}</b></div>
-                  <div>{t.pay.memo}: <b>{p.ref}</b></div>
-                  <button onClick={() => markSent(p.id)} style={{
-                    marginTop: 8, padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-                    background: BRAND.primary, color: "#fff", fontWeight: 600,
-                  }}>{t.pay.markSent}</button>
+          payments
+            .slice()
+            .sort((a, b) => b.ts - a.ts)
+            .map((p) => (
+              <div
+                key={p.id}
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  background: BRAND.surface,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+                  <span>{p.landlord}</span>
+                  <span>{formatPKR(p.amount)}</span>
                 </div>
-              ) : null}
-              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={() => onOpenReceipt(p)} style={{
-                  padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-                  background: BRAND.surface, color: BRAND.primary, fontWeight: 600,
-                }}>{t.pay.receipt}</button>
-                <button onClick={() => refund(p.id)} disabled={p.status === "refunded" || p.status === "initiated"} style={{
-                  padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-                  background: (p.status === "refunded" || p.status === "initiated") ? "#f9fafb" : "#fff7ed",
-                  color: "#92400e", fontWeight: 600,
-                  opacity: (p.status === "refunded" || p.status === "initiated") ? 0.6 : 1,
-                }}>
-                  {p.status === "refunded" ? t.pay.refunded : t.pay.refund}
-                </button>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginTop: 6,
+                    fontSize: 12,
+                    opacity: 0.8,
+                  }}
+                >
+                  <span>
+                    {p.method} • Ref {p.ref}
+                  </span>
+                  <span
+                    style={{
+                      color:
+                        p.status === "succeeded"
+                          ? BRAND.primary
+                          : p.status === "sent"
+                          ? "#92400e"
+                          : p.status === "refunded"
+                          ? "#6b7280"
+                          : "#1f2937",
+                    }}
+                  >
+                    {p.status === "succeeded"
+                      ? t.pay.succeeded
+                      : p.status === "sent"
+                      ? t.pay.sent
+                      : p.status === "refunded"
+                      ? t.pay.refunded
+                      : t.pay.instructions}
+                  </span>
+                </div>
+                {p.method === "Bank Transfer" && p.status === "initiated" ? (
+                  <div style={{ marginTop: 10, fontSize: 12 }}>
+                    <div>
+                      {t.pay.transferTo}: <b>{t.pay.collections}</b>
+                    </div>
+                    <div>
+                      {t.pay.iban}: <b>{t.pay.ibanValue}</b>
+                    </div>
+                    <div>
+                      {t.pay.memo}: <b>{p.ref}</b>
+                    </div>
+                    <button
+                      onClick={() => markSent(p.id)}
+                      style={{
+                        marginTop: 8,
+                        padding: "8px 10px",
+                        borderRadius: 10,
+                        border: `1px solid ${BRAND.ring}`,
+                        background: BRAND.primary,
+                        color: "#fff",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {t.pay.markSent}
+                    </button>
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => onOpenReceipt(p)}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: `1px solid ${BRAND.ring}`,
+                      background: BRAND.surface,
+                      color: BRAND.primary,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t.pay.receipt}
+                  </button>
+                  <button
+                    onClick={() => refund(p.id)}
+                    disabled={p.status === "refunded" || p.status === "initiated"}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: `1px solid ${BRAND.ring}`,
+                      background:
+                        p.status === "refunded" || p.status === "initiated"
+                          ? "#f9fafb"
+                          : "#fff7ed",
+                      color: "#92400e",
+                      fontWeight: 600,
+                      opacity: p.status === "refunded" || p.status === "initiated" ? 0.6 : 1,
+                    }}
+                  >
+                    {p.status === "refunded" ? t.pay.refunded : t.pay.refund}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            ))
         )}
       </div>
     </div>
   );
 };
 
-const RewardsGrid: React.FC<{ t: I18n; onRedeem: (reward: (typeof rewardsCatalog)[number]) => void; }>
-= ({ t, onRedeem }) => (
-  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+const RewardsGrid: React.FC<{
+  t: I18n;
+  onRedeem: (reward: (typeof rewardsCatalog)[number]) => void;
+}> = ({ t, onRedeem }) => (
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gap: 12,
+    }}
+  >
     {rewardsCatalog.map((r) => (
-      <div key={r.id} style={{
-        padding: 12, borderRadius: 14, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface,
-        display: "flex", flexDirection: "column", gap: 6,
-      }}>
+      <div
+        key={r.id}
+        style={{
+          padding: 12,
+          borderRadius: 14,
+          border: "1px solid rgba(0,0,0,0.06)",
+          background: BRAND.surface,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}
+      >
         <div style={{ fontWeight: 600 }}>{r.title}</div>
         <div style={{ fontSize: 12, opacity: 0.7 }}>{r.note}</div>
         <div style={{ marginTop: 6 }}>
-          <span style={{ fontSize: 11, padding: "4px 6px", borderRadius: 8, background: "#ecfdf5", color: BRAND.primary }}>
+          <span
+            style={{
+              fontSize: 11,
+              padding: "4px 6px",
+              borderRadius: 8,
+              background: "#ecfdf5",
+              color: BRAND.primary,
+            }}
+          >
             {r.save}
           </span>
         </div>
-        <button onClick={() => onRedeem(r)} style={{
-          marginTop: 8, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.1)",
-          background: BRAND.primary, color: "white", fontWeight: 600,
-        }}>{t.rewards.redeem}</button>
+        <button
+          onClick={() => onRedeem(r)}
+          style={{
+            marginTop: 8,
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: "1px solid rgba(0,0,0,0.1)",
+            background: BRAND.primary,
+            color: "white",
+            fontWeight: 600,
+          }}
+        >
+          {t.rewards.redeem}
+        </button>
       </div>
     ))}
   </div>
 );
 
 const RewardsTab: React.FC<{
-  t: I18n; redemptions: Redemption[]; setRedemptions: React.Dispatch<React.SetStateAction<Redemption[]>>;
-  role: Role; utm: Utm; onOpenRedeemReceipt: (r: Redemption) => void; onOpenModal: (r: (typeof rewardsCatalog)[number]) => void;
+  t: I18n;
+  redemptions: Redemption[];
+  setRedemptions: React.Dispatch<React.SetStateAction<Redemption[]>>;
+  role: Role;
+  utm: Utm;
+  onOpenRedeemReceipt: (r: Redemption) => void;
+  onOpenModal: (reward: (typeof rewardsCatalog)[number]) => void;
 }> = ({ t, redemptions, setRedemptions, role, utm, onOpenRedeemReceipt, onOpenModal }) => {
   const mark = async (id: string, status: RedemptionStatus) => {
-    setRedemptions((prev) => prev.map((x) => (x.id === id ? { ...x, status } : x)));
+    setRedemptions((prev) =>
+      prev.map((x) => (x.id === id ? { ...x, status } : x))
+    );
     const item = redemptions.find((r) => r.id === id);
     if (!item) return;
     await postToSheet({
-      table: "redemptions", ts: new Date(item.ts).toISOString(), ref: item.ref, user: "",
-      role, rewardId: item.rewardId, brand: item.brand, title: item.title, denomination: item.denomination,
-      points: item.points, status, ua: getUA(), utmSource: utm.source, utmMedium: utm.medium, utmCampaign: utm.campaign,
+      table: "redemptions",
+      ts: new Date(item.ts).toISOString(),
+      ref: item.ref,
+      user: "", // optional
+      role,
+      rewardId: item.rewardId,
+      brand: item.brand,
+      title: item.title,
+      denomination: item.denomination,
+      points: item.points,
+      status,
+      ua: getUA(),
+      utmSource: utm.source,
+      utmMedium: utm.medium,
+      utmCampaign: utm.campaign,
     });
   };
 
@@ -934,45 +1347,104 @@ const RewardsTab: React.FC<{
     <div>
       <SectionTitle title={t.rewards.title} subtitle={t.rewards.subtitle} />
       <RewardsGrid t={t} onRedeem={onOpenModal} />
+
       <div style={{ height: 16 }} />
       <SectionTitle title={t.rewards.recent} />
       {redemptions.length === 0 ? (
         <div style={{ fontSize: 13, opacity: 0.7 }}>{t.rewards.none}</div>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          {redemptions.slice().sort((a, b) => b.ts - a.ts).map((r) => (
-            <div key={r.id} style={{
-              padding: 12, borderRadius: 12, border: "1px solid rgba(0,0,0,0.06)", background: BRAND.surface,
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
-                <span>{r.brand} — {r.title} ({formatPKR(r.denomination)})</span>
-                <span style={{ color: r.status === "fulfilled" ? BRAND.primary :
-                                     r.status === "cancelled" ? "#6b7280" : "#1f2937" }}>
-                  {r.status}
-                </span>
+          {redemptions
+            .slice()
+            .sort((a, b) => b.ts - a.ts)
+            .map((r) => (
+              <div
+                key={r.id}
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  background: BRAND.surface,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+                  <span>
+                    {r.brand} — {r.title} ({formatPKR(r.denomination)})
+                  </span>
+                  <span
+                    style={{
+                      color:
+                        r.status === "fulfilled"
+                          ? BRAND.primary
+                          : r.status === "cancelled"
+                          ? "#6b7280"
+                          : "#1f2937",
+                    }}
+                  >
+                    {r.status}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginTop: 6,
+                    fontSize: 12,
+                    opacity: 0.8,
+                  }}
+                >
+                  <span>
+                    Ref {r.ref} • {t.rewards.points}: {r.points}
+                  </span>
+                  <span>{new Date(r.ts).toLocaleString("en-PK")}</span>
+                </div>
+                <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => onOpenRedeemReceipt(r)}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: `1px solid ${BRAND.ring}`,
+                      background: BRAND.surface,
+                      color: BRAND.primary,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t.rewards.viewReceipt}
+                  </button>
+                  <button
+                    onClick={() => mark(r.id, "fulfilled")}
+                    disabled={r.status === "fulfilled"}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: `1px solid ${BRAND.ring}`,
+                      background: r.status === "fulfilled" ? "#f3f4f6" : "#ecfdf5",
+                      color: BRAND.primary,
+                      fontWeight: 600,
+                      opacity: r.status === "fulfilled" ? 0.6 : 1,
+                    }}
+                  >
+                    {t.rewards.markFulfilled}
+                  </button>
+                  <button
+                    onClick={() => mark(r.id, "cancelled")}
+                    disabled={r.status === "cancelled"}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: `1px solid ${BRAND.ring}`,
+                      background: r.status === "cancelled" ? "#f3f4f6" : "#fff7ed",
+                      color: "#92400e",
+                      fontWeight: 600,
+                      opacity: r.status === "cancelled" ? 0.6 : 1,
+                    }}
+                  >
+                    {t.rewards.markCancelled}
+                  </button>
+                </div>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-                <span>Ref {r.ref} • {t.rewards.points}: {r.points}</span>
-                <span>{new Date(r.ts).toLocaleString("en-PK")}</span>
-              </div>
-              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={() => onOpenRedeemReceipt(r)} style={{
-                  padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-                  background: BRAND.surface, color: BRAND.primary, fontWeight: 600,
-                }}>{t.rewards.viewReceipt}</button>
-                <button onClick={() => mark(r.id, "fulfilled")} disabled={r.status === "fulfilled"} style={{
-                  padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-                  background: r.status === "fulfilled" ? "#f3f4f6" : "#ecfdf5",
-                  color: BRAND.primary, fontWeight: 600, opacity: r.status === "fulfilled" ? 0.6 : 1,
-                }}>{t.rewards.markFulfilled}</button>
-                <button onClick={() => mark(r.id, "cancelled")} disabled={r.status === "cancelled"} style={{
-                  padding: "8px 10px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-                  background: r.status === "cancelled" ? "#f3f4f6" : "#fff7ed",
-                  color: "#92400e", fontWeight: 600, opacity: r.status === "cancelled" ? 0.6 : 1,
-                }}>{t.rewards.markCancelled}</button>
-              </div>
-            </div>
-          ))}
+            ))}
         </div>
       )}
     </div>
@@ -988,8 +1460,11 @@ const SupportTab: React.FC<{ t: I18n }> = ({ t }) => (
   </div>
 );
 
-const ProfileTab: React.FC<{ t: I18n; kyc: KycState; setKyc: (k: KycState) => void }>
-= ({ t, kyc, setKyc }) => (
+const ProfileTab: React.FC<{ t: I18n; kyc: KycState; setKyc: (k: KycState) => void }> = ({
+  t,
+  kyc,
+  setKyc,
+}) => (
   <div>
     <SectionTitle title={t.profile.title} />
     <Row right={kyc === "verified" ? t.profile.verified : kyc === "in-progress" ? t.profile.inprogress : t.profile.notStarted}>
@@ -997,10 +1472,19 @@ const ProfileTab: React.FC<{ t: I18n; kyc: KycState; setKyc: (k: KycState) => vo
     </Row>
     <div style={{ height: 8 }} />
     {kyc !== "verified" ? (
-      <button onClick={() => setKyc(kyc === "none" ? "in-progress" : "verified")} style={{
-        padding: "10px 12px", borderRadius: 10, border: `1px solid ${BRAND.ring}`,
-        background: BRAND.primary, color: "#fff", fontWeight: 600,
-      }}>{kyc === "none" ? t.profile.start : t.profile.complete}</button>
+      <button
+        onClick={() => setKyc(kyc === "none" ? "in-progress" : "verified")}
+        style={{
+          padding: "10px 12px",
+          borderRadius: 10,
+          border: `1px solid ${BRAND.ring}`,
+          background: BRAND.primary,
+          color: "#fff",
+          fontWeight: 600,
+        }}
+      >
+        {kyc === "none" ? t.profile.start : t.profile.complete}
+      </button>
     ) : (
       <div style={{ fontSize: 12, opacity: 0.75 }}>{t.profile.thanks}</div>
     )}
@@ -1011,7 +1495,9 @@ const StatusScreen: React.FC<{ t: I18n }> = ({ t }) => (
   <div>
     <SectionTitle title={t.status.title} subtitle={t.status.subtitle} />
     <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>
-      {t.status.items.map((it: string, i: number) => <li key={i}>{it}</li>)}
+      {t.status.items.map((it: string, i: number) => (
+        <li key={i}>{it}</li>
+      ))}
     </ul>
   </div>
 );
@@ -1020,7 +1506,9 @@ const SecurityPrivacy: React.FC<{ t: I18n }> = ({ t }) => (
   <div>
     <SectionTitle title={t.security.title} subtitle={t.security.subtitle} />
     <ul style={{ paddingLeft: 18, lineHeight: 1.7 }}>
-      {t.security.items.map((it: string, i: number) => <li key={i}>{it}</li>)}
+      {t.security.items.map((it: string, i: number) => (
+        <li key={i}>{it}</li>
+      ))}
     </ul>
   </div>
 );
@@ -1043,7 +1531,7 @@ const FounderScreen: React.FC<{ t: I18n }> = ({ t }) => (
 );
 
 // ---------- App ----------
-export default function App() {
+const App: React.FC = () => {
   const [tab, setTab] = useState<Tab>("home");
   const [menuOpen, setMenuOpen] = useState(false);
   const [role, setRole] = useState<Role>("tenant");
@@ -1054,30 +1542,22 @@ export default function App() {
   const [redeemPick, setRedeemPick] = useState<(typeof rewardsCatalog)[number] | null>(null);
   const [redeemReceipt, setRedeemReceipt] = useState<Redemption | null>(null);
 
-  const [lang, setLang] = useState<"en" | "ur">("en");
+  // *** Persisted language (load + save) ***
+  const [lang, setLang] = useState<"en" | "ur">(
+    (typeof window !== "undefined" && (localStorage.getItem("rb-lang") as "en" | "ur")) || "en"
+  );
+  useEffect(() => {
+    try { localStorage.setItem("rb-lang", lang); } catch {}
+  }, [lang]);
+
   const t: I18n = (copy as any)[lang] as I18n;
   const dir: "ltr" | "rtl" = lang === "ur" ? "rtl" : "ltr";
 
   const utm = useMemo(() => getUtm(), []);
 
-  // init language from localStorage / browser
+  // language → reflect on <html>
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("rb-lang") as "en" | "ur" | null;
-      if (saved === "en" || saved === "ur") {
-        setLang(saved);
-        return;
-      }
-      const langs = (navigator.languages || [navigator.language]).map((l) => l?.toLowerCase?.() || "");
-      const prefersUrdu = langs.some((l) => l.startsWith("ur"));
-      if (prefersUrdu) setLang("ur");
-    } catch {}
-  }, []);
-
-  // persist language + reflect on <html>
-  useEffect(() => {
-    try {
-      localStorage.setItem("rb-lang", lang);
       const root = document.documentElement;
       root.setAttribute("lang", lang);
       root.setAttribute("dir", dir);
@@ -1112,12 +1592,20 @@ export default function App() {
 
   const onConfirmRedeem = async (denom: number) => {
     if (!redeemPick) return;
+    // simple demo points calc: 1 point per 10 PKR
     const pts = Math.round(denom / 10);
     const id = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
     const ref = `RB-REDEEM-${Math.floor(100000 + Math.random() * 900000)}`;
     const item: Redemption = {
-      id, ref, rewardId: redeemPick.id, brand: redeemPick.brand, title: redeemPick.title,
-      denomination: denom, points: pts, status: "requested", ts: Date.now(),
+      id,
+      ref,
+      rewardId: redeemPick.id,
+      brand: redeemPick.brand,
+      title: redeemPick.title,
+      denomination: denom,
+      points: pts,
+      status: "requested",
+      ts: Date.now(),
     };
     setRedemptions((prev) => [item, ...prev]);
     setRedeemPick(null);
@@ -1126,10 +1614,19 @@ export default function App() {
     await postToSheet({
       table: "redemptions",
       ts: new Date(item.ts).toISOString(),
-      ref: item.ref, user: "", role,
-      rewardId: item.rewardId, brand: item.brand, title: item.title,
-      denomination: item.denomination, points: item.points, status: item.status,
-      ua: getUA(), utmSource: utm.source, utmMedium: utm.medium, utmCampaign: utm.campaign,
+      ref: item.ref,
+      user: "",
+      role,
+      rewardId: item.rewardId,
+      brand: item.brand,
+      title: item.title,
+      denomination: item.denomination,
+      points: item.points,
+      status: item.status,
+      ua: getUA(),
+      utmSource: utm.source,
+      utmMedium: utm.medium,
+      utmCampaign: utm.campaign,
     });
   };
 
@@ -1143,7 +1640,9 @@ export default function App() {
             t={t}
             payments={payments}
             addPayment={(p) => setPayments((prev) => [...prev, p])}
-            updatePayment={(id, patch) => setPayments((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))}
+            updatePayment={(id, patch) =>
+              setPayments((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+            }
             role={role}
             utm={utm}
             onOpenReceipt={(p) => setReceiptFor(p)}
@@ -1179,29 +1678,61 @@ export default function App() {
   }, [tab, role, kyc, payments, redemptions, utm, t]);
 
   return (
-    <div style={{ minHeight: "100vh", background: BRAND.bg, display: "flex", flexDirection: "column", color: BRAND.text }} dir={dir}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: BRAND.bg,
+        display: "flex",
+        flexDirection: "column",
+        color: BRAND.text,
+      }}
+      dir={dir}
+    >
       {/* Keyframes for animated card gradient */}
-      <style>{`@keyframes rb-gradient-move {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}`}</style>
+      <style>
+        {
+          "@keyframes rb-gradient-move {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}"
+        }
+      </style>
 
       {/* Header */}
-      <header style={{
-        position: "sticky", top: 0, zIndex: 20, height: 56, display: "flex", alignItems: "center",
-        justifyContent: "space-between", padding: "0 14px", background: "#ffffffcc",
-        backdropFilter: "saturate(1.8) blur(8px)", borderBottom: "1px solid rgba(0,0,0,0.06)",
-      }}>
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 20,
+          height: 56,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 14px",
+          background: "#ffffffcc",
+          backdropFilter: "saturate(1.8) blur(8px)",
+          borderBottom: "1px solid rgba(0,0,0,0.06)",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
-          <BrandLogo /> RentBack
+          <BrandLogo />
+          RentBack
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Language pill (header quick toggle) */}
+          {/* Language pill */}
           <Pill onClick={() => setLang((p) => (p === "en" ? "ur" : "en"))}>
-            {(copy as any)[lang].langNames[lang === "en" ? "ur" : "en"]}
+            {t.langNames[lang === "en" ? "ur" : "en"]}
           </Pill>
+
           {/* Menu button */}
-          <button onClick={() => setMenuOpen(true)} aria-label="Open menu" style={{
-            border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface, borderRadius: 10, padding: 8,
-          }}>
+          <button
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            style={{
+              border: "1px solid rgba(0,0,0,0.1)",
+              background: BRAND.surface,
+              borderRadius: 10,
+              padding: 8,
+            }}
+          >
             <div style={{ width: 18, height: 2, background: "#111", marginBottom: 3 }} />
             <div style={{ width: 18, height: 2, background: "#111", marginBottom: 3 }} />
             <div style={{ width: 18, height: 2, background: "#111" }} />
@@ -1213,23 +1744,45 @@ export default function App() {
       <main style={{ flex: 1, padding: 14, paddingBottom: 80 }}>{content}</main>
 
       {/* Bottom Nav */}
-      <nav style={{
-        position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: BRAND.surface,
-        borderTop: "1px solid rgba(0,0,0,0.06)", height: 64, display: "grid",
-        gridTemplateColumns: "repeat(5, 1fr)", alignItems: "center",
-      }}>
+      <nav
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 30,
+          background: BRAND.surface,
+          borderTop: "1px solid rgba(0,0,0,0.06)",
+          height: 64,
+          display: "grid",
+          gridTemplateColumns: "repeat(5, 1fr)",
+          alignItems: "center",
+        }}
+      >
         {[
-          { key: "home", label: (copy as any)[lang].nav.home },
-          { key: "pay", label: (copy as any)[lang].nav.pay },
-          { key: "rewards", label: (copy as any)[lang].nav.rewards },
-          { key: "support", label: (copy as any)[lang].nav.support },
-          { key: "profile", label: (copy as any)[lang].nav.profile },
+          { key: "home", label: t.nav.home },
+          { key: "pay", label: t.nav.pay },
+          { key: "rewards", label: t.nav.rewards },
+          { key: "support", label: t.nav.support },
+          { key: "profile", label: t.nav.profile },
         ].map((it) => (
-          <button key={it.key} onClick={() => setTab(it.key as Tab)} style={{
-            height: "100%", background: "transparent", border: "none", cursor: "pointer",
-            fontWeight: tab === it.key ? 700 : 500, color: tab === it.key ? BRAND.primary : "#0f172a",
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
-          }}>
+          <button
+            key={it.key}
+            onClick={() => setTab(it.key as Tab)}
+            style={{
+              height: "100%",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: tab === it.key ? 700 : 500,
+              color: tab === it.key ? BRAND.primary : "#0f172a",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+            }}
+          >
             <span>{it.label}</span>
           </button>
         ))}
@@ -1237,46 +1790,69 @@ export default function App() {
 
       {/* Right Drawer */}
       {menuOpen ? (
-        <div role="dialog" aria-modal="true" onClick={() => setMenuOpen(false)} style={{
-          position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.35)", display: "flex", justifyContent: "flex-end",
-        }}>
-          <div onClick={(e) => e.stopPropagation()} style={{
-            width: 320, maxWidth: "90%", height: "100%", background: BRAND.surface, padding: 14,
-            display: "flex", flexDirection: "column", gap: 10, boxShadow: "-8px 0 24px rgba(0,0,0,0.15)",
-          }}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setMenuOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            background: "rgba(0,0,0,0.35)",
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 320,
+              maxWidth: "90%",
+              height: "100%",
+              background: BRAND.surface,
+              padding: 14,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              boxShadow: "-8px 0 24px rgba(0,0,0,0.15)",
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontWeight: 700 }}>{(copy as any)[lang].menu}</div>
-              <button onClick={() => setMenuOpen(false)} aria-label="Close"
-                style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}>✕</button>
+              <div style={{ fontWeight: 700 }}>{t.menu}</div>
+              <button
+                onClick={() => setMenuOpen(false)}
+                aria-label="Close"
+                style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6 }}
+              >
+                ✕
+              </button>
             </div>
 
-            <SectionTitle title={(copy as any)[lang].drawer.explore} />
-            <Row onClick={() => { setTab("status"); setMenuOpen(false); }}>{(copy as any)[lang].drawer.status}</Row>
-            <Row onClick={() => { setTab("security"); setMenuOpen(false); }}>{(copy as any)[lang].drawer.security}</Row>
-            <Row onClick={() => { setTab("rewards"); setMenuOpen(false); }}>{(copy as any)[lang].drawer.rewards}</Row>
-            <Row onClick={() => { setTab("about"); setMenuOpen(false); }}>{(copy as any)[lang].drawer.about}</Row>
-            <Row onClick={() => { setTab("founder"); setMenuOpen(false); }}>{(copy as any)[lang].drawer.founder}</Row>
-
-            {/* Open legal pages in new tab, pass current lang */}
+            <SectionTitle title={t.drawer.explore} />
+            <Row onClick={() => { setTab("status"); setMenuOpen(false); }}>{t.drawer.status}</Row>
+            <Row onClick={() => { setTab("security"); setMenuOpen(false); }}>{t.drawer.security}</Row>
+            <Row onClick={() => { setTab("rewards"); setMenuOpen(false); }}>{t.drawer.rewards}</Row>
+            <Row onClick={() => { setTab("about"); setMenuOpen(false); }}>{t.drawer.about}</Row>
+            <Row onClick={() => { setTab("founder"); setMenuOpen(false); }}>{t.drawer.founder}</Row>
             <Row onClick={() => { window.open(`/legal/privacy?lang=${lang}`, "_blank"); }}>
-              {(copy as any)[lang].drawer.privacy}
+              {t.drawer.privacy}
             </Row>
             <Row onClick={() => { window.open(`/legal/terms?lang=${lang}`, "_blank"); }}>
-              {(copy as any)[lang].drawer.terms}
+              {t.drawer.terms}
             </Row>
 
             <div style={{ height: 6 }} />
-            <SectionTitle title={(copy as any)[lang].drawer.role} subtitle={(copy as any)[lang].drawer.roleHint} />
+            <SectionTitle title={t.drawer.role} subtitle={t.drawer.roleHint} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Pill onClick={() => setRole("tenant")}>{role === "tenant" ? `● ${(copy as any)[lang].drawer.tenant}` : (copy as any)[lang].drawer.tenant}</Pill>
-              <Pill onClick={() => setRole("landlord")}>{role === "landlord" ? `● ${(copy as any)[lang].drawer.landlord}` : (copy as any)[lang].drawer.landlord}</Pill>
+              <Pill onClick={() => setRole("tenant")}>{role === "tenant" ? `● ${t.drawer.tenant}` : t.drawer.tenant}</Pill>
+              <Pill onClick={() => setRole("landlord")}>{role === "landlord" ? `● ${t.drawer.landlord}` : t.drawer.landlord}</Pill>
             </div>
 
             <div style={{ height: 6 }} />
-            <SectionTitle title={(copy as any)[lang].drawer.lang} />
+            <SectionTitle title={t.drawer.lang} />
             <div style={{ display: "flex", gap: 8 }}>
-              <Pill onClick={() => setLang("en")}>{lang === "en" ? `● ${(copy as any)[lang].langNames.en}` : (copy as any)[lang].langNames.en}</Pill>
-              <Pill onClick={() => setLang("ur")}>{lang === "ur" ? `● ${(copy as any)[lang].langNames.ur}` : (copy as any)[lang].langNames.ur}</Pill>
+              <Pill onClick={() => setLang("en")}>{lang === "en" ? `● ${t.langNames.en}` : t.langNames.en}</Pill>
+              <Pill onClick={() => setLang("ur")}>{lang === "ur" ? `● ${t.langNames.ur}` : t.langNames.ur}</Pill>
             </div>
           </div>
         </div>
@@ -1287,7 +1863,12 @@ export default function App() {
 
       {/* Redeem Modal */}
       {redeemPick ? (
-        <RedeemModal t={t} reward={redeemPick} onClose={() => setRedeemPick(null)} onConfirm={onConfirmRedeem} />
+        <RedeemModal
+          t={t}
+          reward={redeemPick}
+          onClose={() => setRedeemPick(null)}
+          onConfirm={onConfirmRedeem}
+        />
       ) : null}
 
       {/* Redeem Receipt Modal */}
@@ -1296,4 +1877,6 @@ export default function App() {
       ) : null}
     </div>
   );
-}
+};
+
+export default App;
