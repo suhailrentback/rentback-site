@@ -396,7 +396,7 @@ const copy = {
   },
   ur: {
     appName: "RentBack",
-    menu: "می뉴",
+    menu: "مینیو",
     nav: { home: "ہوم", pay: "ادائیگی", rewards: "انعامات", support: "مدد", profile: "پروفائل" },
     drawer: {
       explore: "ایکسپلور",
@@ -455,7 +455,7 @@ const copy = {
       title: "انعامات",
       subtitle: "پاکستان کے لیے منتخب سہولتیں",
       redeem: "ریڈیم",
-      choose: "ڈینامینیشن منتخب کریں",
+      choose: "رقم منتخب کریں",
       confirm: "ریڈیم کی تصدیق",
       cancel: "منسوخ",
       recent: "حالیہ ریڈیمپشنز",
@@ -1542,14 +1542,7 @@ const App: React.FC = () => {
   const [redeemPick, setRedeemPick] = useState<(typeof rewardsCatalog)[number] | null>(null);
   const [redeemReceipt, setRedeemReceipt] = useState<Redemption | null>(null);
 
-  // *** Persisted language (load + save) ***
-  const [lang, setLang] = useState<"en" | "ur">(
-    (typeof window !== "undefined" && (localStorage.getItem("rb-lang") as "en" | "ur")) || "en"
-  );
-  useEffect(() => {
-    try { localStorage.setItem("rb-lang", lang); } catch {}
-  }, [lang]);
-
+  const [lang, setLang] = useState<"en" | "ur">("en");
   const t: I18n = (copy as any)[lang] as I18n;
   const dir: "ltr" | "rtl" = lang === "ur" ? "rtl" : "ltr";
 
@@ -1563,6 +1556,21 @@ const App: React.FC = () => {
       root.setAttribute("dir", dir);
     } catch {}
   }, [lang, dir]);
+
+  // --- added: load saved language once ---
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("rb-lang");
+      if (saved === "en" || saved === "ur") setLang(saved as "en" | "ur");
+    } catch {}
+  }, []);
+
+  // --- added: persist language on change ---
+  useEffect(() => {
+    try {
+      localStorage.setItem("rb-lang", lang);
+    } catch {}
+  }, [lang]);
 
   // Load/save demo payments to localStorage
   useEffect(() => {
@@ -1834,12 +1842,8 @@ const App: React.FC = () => {
             <Row onClick={() => { setTab("rewards"); setMenuOpen(false); }}>{t.drawer.rewards}</Row>
             <Row onClick={() => { setTab("about"); setMenuOpen(false); }}>{t.drawer.about}</Row>
             <Row onClick={() => { setTab("founder"); setMenuOpen(false); }}>{t.drawer.founder}</Row>
-            <Row onClick={() => { window.open(`/legal/privacy?lang=${lang}`, "_blank"); }}>
-              {t.drawer.privacy}
-            </Row>
-            <Row onClick={() => { window.open(`/legal/terms?lang=${lang}`, "_blank"); }}>
-              {t.drawer.terms}
-            </Row>
+            <Row onClick={() => { window.open(`/legal/privacy?lang=${lang}`, "_blank"); }}>{t.drawer.privacy}</Row>
+            <Row onClick={() => { window.open(`/legal/terms?lang=${lang}`, "_blank"); }}>{t.drawer.terms}</Row>
 
             <div style={{ height: 6 }} />
             <SectionTitle title={t.drawer.role} subtitle={t.drawer.roleHint} />
