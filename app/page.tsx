@@ -1,865 +1,692 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { Languages, Shield, Gift, Zap } from "lucide-react";
-import Script from "next/script";
+import React, { useEffect, useMemo, useState } from "react";
 
 /**
- * RentBack Landing Page — follows system theme (no toggle)
- * - Theme follows device (prefers-color-scheme) automatically
- * - EN/UR language toggle in footer
- * - Header clean; footer has Privacy/Terms/Rewards/Founder/Cookies + Language
- * - Consent-based analytics (Plausible)
- * - Phone normalizer (PK) + inline validation
- * - Waitlist form posts to window.RB_WAITLIST_ENDPOINT (optional SECRET)
+ * RentBack — Landing Page (for rentback.app)
+ * - Brand tokens aligned with app
+ * - EN/UR i18n + RTL for UR
+ * - Language persisted to localStorage ("rb-lang")
+ * - Simple hero + features + waitlist form (Email, Phone, City)
+ * - Form posts to Google Apps Script endpoint (no-cors)
+ * - Footer with Privacy / Terms / Founder (modal), and Language toggle
+ * - No extra deps (inline styles only)
  */
 
-// Optional globals injected via a <script> tag in app/layout.tsx
-// window.RB_WAITLIST_ENDPOINT = 'https://script.google.com/macros/s/XXXXX/exec'
-// window.RB_WAITLIST_SECRET = 'your-shared-secret'
+// ---------- Brand ----------
+const BRAND = {
+  primary: "#059669", // emerald-600
+  primarySoft: "#10b981",
+  primaryLite: "#34d399",
+  teal: "#14b8a6",
+  bg: "#f6faf8",
+  surface: "#ffffff",
+  text: "#0b0b0b",
+  ring: "rgba(5,150,105,0.20)",
+} as const;
 
-// Fallback endpoint (used if runtime script not present)
-const FALLBACK_WAITLIST_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbwCqHgI_5wkWTTorP_803gULbkVDuhLLs_lQnKN9k5dl1NPJx7XKEHj8IOcIyIENZgm/exec" as const;
+// ---------- Types ----------
+type I18n = { [key: string]: any };
 
-export default function RentBackLanding() {
-  const _WAITLIST_ENDPOINT =
-    (typeof window !== "undefined" && (window as any).RB_WAITLIST_ENDPOINT) ||
-    FALLBACK_WAITLIST_ENDPOINT;
+// ---------- i18n copy ----------
+const copy: Record<"en" | "ur", I18n> = {
+  en: {
+    appName: "RentBack",
+    statusPill: "Waiting approval",
+    heroTitle: "Turn your rent into rewards.",
+    heroSub:
+      "We’re building the RentBack app. Pay by our card, your bank, or any digital bank. Earn points and redeem for bills and shopping.",
+    join: "Join",
+    email: "Email",
+    phone: "Phone (PK)",
+    city: "City",
+    successTitle: "You’re in!",
+    successBody:
+      "We’ll email you early access as we open city by city in Pakistan.",
+    errors: {
+      email: "Please enter a valid email address.",
+      phone: "Enter a Pakistani mobile like 03001234567 or +923001234567.",
+    },
+    howTitle: "How it works",
+    how: [
+      { t: "Pay rent", d: "Use our card, your bank, or any digital bank." },
+      { t: "Earn points", d: "Instant points on every verified payment." },
+      { t: "Redeem rewards", d: "Top-ups, utility bills, shopping vouchers." },
+    ],
+    whyTitle: "Why RentBack",
+    why: [
+      { t: "Secure", d: "Built with licensed payment partners." },
+      { t: "Rewarding", d: "Your biggest expense finally gives back." },
+      { t: "Simple", d: "No extra steps or hidden fees." },
+    ],
+    footerNote:
+      "RentBack is preparing an application to the State Bank of Pakistan Regulatory Sandbox. Rewards subject to terms.",
+    footer: {
+      privacy: "Privacy",
+      terms: "Terms",
+      founder: "Founder",
+      lang: "Language",
+      urdu: "اردو",
+      english: "English",
+    },
+    founder: { name: "Suhail Ahmed", email: "help@rentback.app", title: "Founder" },
+  },
+  ur: {
+    appName: "RentBack",
+    statusPill: "منظوری کا انتظار",
+    heroTitle: "اپنے کرائے کو انعامات میں بدلیں۔",
+    heroSub:
+      "ہم RentBack ایپ بنا رہے ہیں۔ ہمارے کارڈ، آپ کے بینک یا کسی بھی ڈیجیٹل بینک سے ادائیگی کریں۔ پوائنٹس کمائیں اور بلز و شاپنگ پر ریڈیم کریں۔",
+    join: "شامل ہوں",
+    email: "ای میل",
+    phone: "فون (PK)",
+    city: "شہر",
+    successTitle: "آپ شامل ہو گئے!",
+    successBody:
+      "ہم جیسے جیسے شہروں میں لانچ کریں گے، آپ کو ابتدائی رسائی ای میل کریں گے۔",
+    errors: {
+      email: "براہِ کرم درست ای میل درج کریں۔",
+      phone: "پاکستانی موبائل نمبر لکھیں: 03001234567 یا +923001234567",
+    },
+    howTitle: "طریقہ کار",
+    how: [
+      { t: "کرایہ ادا کریں", d: "ہمارے کارڈ، آپ کے بینک یا کسی بھی ڈیجیٹل بینک سے۔" },
+      { t: "پوائنٹس کمائیں", d: "ہر تصدیق شدہ ادائیگی پر فوری پوائنٹس۔" },
+      { t: "انعام حاصل کریں", d: "ٹاپ اپ، یوٹیلیٹی بلز، شاپنگ واؤچرز۔" },
+    ],
+    whyTitle: "کیوں رینٹ بیک؟",
+    why: [
+      { t: "محفوظ", d: "لائسنس یافتہ ادائیگی پارٹنرز کے ساتھ بنایا گیا۔" },
+      { t: "فائدہ مند", d: "آپ کا سب سے بڑا خرچہ اب واپس دے۔" },
+      { t: "آسان", d: "کوئی اضافی مرحلہ یا چُھپی فیس نہیں۔" },
+    ],
+    footerNote:
+      "رینٹ بیک اسٹیٹ بینک آف پاکستان کے ریگولیٹری سینڈ باکس کے لیے درخواست کی تیاری کر رہا ہے۔ ریوارڈز شرائط کے تابع ہیں۔",
+    footer: {
+      privacy: "پرائیویسی",
+      terms: "شرائط",
+      founder: "بانی",
+      lang: "زبان",
+      urdu: "اردو",
+      english: "English",
+    },
+    founder: { name: "سہیل احمد", email: "help@rentback.app", title: "بانی" },
+  },
+};
 
-  const _WAITLIST_SECRET =
-    (typeof window !== "undefined" && (window as any).RB_WAITLIST_SECRET) || "";
+// ---------- Helpers ----------
+const formatPKR = (n: number) =>
+  new Intl.NumberFormat("en-PK", {
+    style: "currency",
+    currency: "PKR",
+    maximumFractionDigits: 0,
+  }).format(n);
 
-  // Expose the resolved endpoint back to window for quick manual checks
-  useEffect(() => {
-    try {
-      (window as any).RB_WAITLIST_ENDPOINT = _WAITLIST_ENDPOINT;
-    } catch {}
-  }, [_WAITLIST_ENDPOINT]);
+// Simple PK mobile validator
+const isValidPkMobile = (s: string) =>
+  /^(?:\+?92)?0?3[0-9]{9}$/.test(s.trim());
 
+// Normalize PK phone to +923… format
+const normalizePkPhone = (raw: string) => {
+  let s = (raw || "").replace(/[^\d+]/g, "");
+  if (s.startsWith("00")) s = "+" + s.slice(2);
+  if (s.startsWith("92")) s = "+92" + s.slice(2);
+  const digits = s.replace(/\D/g, "");
+  if (s.startsWith("+92")) return ("+92" + digits.slice(2)).slice(0, 13);
+  if (digits.length >= 11 && digits[0] === "0" && digits[1] === "3")
+    return "+92" + digits.slice(1, 11);
+  if (digits.length === 10 && digits[0] === "3") return "+92" + digits.slice(0, 10);
+  let ten = digits.replace(/^0+/, "").slice(0, 10);
+  return "+92" + ten;
+};
+
+// ---------- Visuals ----------
+const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({
+  size = 20,
+  stroke = BRAND.primary,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={stroke}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M3 11.5L12 4l9 7.5" />
+    <path d="M5 10v9h14v-9" />
+  </svg>
+);
+
+const CardVisual: React.FC = () => (
+  <div
+    style={{
+      position: "relative",
+      width: "100%",
+      maxWidth: 460,
+      height: 230,
+      borderRadius: 20,
+      overflow: "hidden",
+      border: "1px solid rgba(0,0,0,0.06)",
+      boxShadow: "0 12px 30px rgba(5,150,105,0.18)",
+      color: BRAND.text,
+      background: `linear-gradient(120deg, ${BRAND.primary}, ${BRAND.teal}, ${BRAND.primaryLite})`,
+      backgroundSize: "200% 200%",
+      animation: "rb-gradient-move 12s ease infinite",
+    }}
+  >
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background:
+          "linear-gradient( to bottom right, rgba(255,255,255,0.14), rgba(255,255,255,0) )",
+      }}
+    />
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        padding: 18,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700 }}>
+          <BrandLogo size={22} stroke="#0f172a" />
+          <span>RentBack</span>
+        </div>
+        <span style={{ fontSize: 12, opacity: 0.9, color: "#0f172a" }}>VIRTUAL • Debit</span>
+      </div>
+      <div
+        style={{
+          marginTop: "auto",
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          letterSpacing: 1,
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 600, color: "#0f172a" }}>**** **** **** 0007</div>
+        <div style={{ display: "flex", gap: 20, marginTop: 6, fontSize: 12, color: "#0f172a" }}>
+          <span>Exp 12/27</span>
+          <span>PKR</span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// ---------- Page ----------
+export default function LandingPage() {
+  // Language (persisted like the app)
   const [lang, setLang] = useState<"en" | "ur">("en");
+  const t: I18n = (copy as any)[lang];
+  const dir: "ltr" | "rtl" = lang === "ur" ? "rtl" : "ltr";
 
-  // Theme: follow OS setting (no manual toggle, no persistence)
-  const [darkMode, setDarkMode] = useState(false);
+  // load saved language once
   useEffect(() => {
     try {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const apply = () => setDarkMode(mq.matches);
-      apply(); // initial
-      mq.addEventListener("change", apply);
-      return () => mq.removeEventListener("change", apply);
+      const saved = localStorage.getItem("rb-lang");
+      if (saved === "en" || saved === "ur") setLang(saved);
     } catch {}
   }, []);
-
-  // Reflect darkMode to <html> & <body>
+  // persist on change
   useEffect(() => {
     try {
-      if (typeof document !== "undefined") {
-        const root = document.documentElement;
-        const body = document.body;
-        root.classList.toggle("dark", darkMode);
-        if (body) body.classList.toggle("dark", darkMode);
-        (root as HTMLElement).style.colorScheme = darkMode ? "dark" : "light";
-      }
-    } catch {}
-  }, [darkMode]);
-
-  // Reflect language and direction on <html>
-  useEffect(() => {
-    try {
-      const root = document.documentElement;
-      root.setAttribute("lang", lang === "ur" ? "ur" : "en");
-      root.setAttribute("dir", lang === "ur" ? "rtl" : "ltr");
+      localStorage.setItem("rb-lang", lang);
     } catch {}
   }, [lang]);
 
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // reflect on <html>
+  useEffect(() => {
+    try {
+      const root = document.documentElement;
+      root.setAttribute("lang", lang);
+      root.setAttribute("dir", dir);
+    } catch {}
+  }, [lang, dir]);
+
+  // Form state
   const [email, setEmail] = useState("");
-  const [wa, setWa] = useState("");
+  const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-  // ---- Form UX niceties: inline validation ----
-  type FieldErrors = { email?: string; wa?: string };
-  const [touched, setTouched] = useState<{
-    email: boolean;
-    wa: boolean;
-    city: boolean;
-  }>({ email: false, wa: false, city: false });
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-
-  const messages = useMemo(
-    () => ({
-      en: {
-        emailReq: "Please enter a valid email address.",
-        waReq: "Please enter your phone number.",
-        waInvalid:
-          "Enter a Pakistani mobile like 03001234567 or +923001234567.",
-      },
-      ur: {
-        emailReq: "براہِ کرم درست ای میل درج کریں۔",
-        waReq: "براہِ کرم اپنا فون نمبر درج کریں۔",
-        waInvalid:
-          "پاکستانی موبائل نمبر لکھیں: 03001234567 یا +923001234567",
-      },
-    }),
-    []
-  );
-
-  const validateNow = (em: string, w: string): FieldErrors => {
-    const errs: FieldErrors = {};
-    const emailOk = /.+@.+\..+/.test(em.trim());
-    if (!emailOk) errs.email = messages[lang].emailReq;
-
-    const wTrim = w.trim();
-    if (!wTrim) {
-      errs.wa = messages[lang].waReq;
-    } else {
-      const pk = /^(?:[+]92)?0?3[0-9]{9}$/; // 03XXXXXXXXX or +923XXXXXXXXX
-      if (!pk.test(wTrim)) errs.wa = messages[lang].waInvalid;
-    }
-    return errs;
-  };
-
-  // live-validate on input change
-  useEffect(() => {
-    setFieldErrors(validateNow(email, wa));
-  }, [email, wa, lang]);
-
-  const [openLegal, setOpenLegal] = useState<null | "privacy" | "terms" | "rewards">(null);
-  const [openFounder, setOpenFounder] = useState(false);
-  const [openCookies, setOpenCookies] = useState(false);
-  const [cookiePrefs, setCookiePrefs] = useState<{ analytics: boolean } | null>(null);
-  const modalRef = useRef<HTMLDivElement | null>(null);
-  const prevFocusRef = useRef<HTMLElement | null>(null);
-  const [bgReady, setBgReady] = useState(false);
-  const reduce = useReducedMotion();
-  const formRef = useRef<HTMLDivElement | null>(null);
-  // Anti-spam helpers
-  const hpRef = useRef<HTMLInputElement | null>(null);
-  const startRef = useRef<number>(Date.now());
-  const lastSubmitRef = useRef<number>(0);
-
-  // --- Phone input helper: normalize Pakistani numbers while typing ---
-  const normalizePkPhone = (raw: string): string => {
-    let s = (raw || "")
-      .split("")
-      .filter((ch) => (ch >= "0" && ch <= "9") || ch === "+")
-      .join("");
-    if (s.startsWith("+"))
-      s = "+" + s.slice(1).split("").filter((ch) => ch !== "+").join("");
-    else s = s.split("").filter((ch) => ch !== "+").join("");
-
-    if (s.startsWith("00")) s = "+" + s.slice(2);
-    if (s.startsWith("92")) s = "+92" + s.slice(2);
-
-    const digits = s.split("").filter((ch) => ch >= "0" && ch <= "9").join("");
-
-    if (s.startsWith("+92")) return ("+92" + digits.slice(2)).slice(0, 13);
-
-    if (digits.length >= 11 && digits[0] === "0" && digits[1] === "3")
-      return "+92" + digits.slice(1, 11);
-    if (digits.length === 10 && digits[0] === "3") return "+92" + digits.slice(0, 10);
-
-    let ten = digits;
-    while (ten.startsWith("0")) ten = ten.slice(1);
-    ten = ten.slice(0, 10);
-    return "+92" + ten;
-  };
-
-  // Paste handler to normalize clipboard text for phone
-  useEffect(() => {
-    const el = document.getElementById("rb-wa") as HTMLInputElement | null;
-    if (!el) return;
-    const onPaste = (e: ClipboardEvent) => {
-      try {
-        e.preventDefault();
-        const txt = (e.clipboardData && e.clipboardData.getData("text")) || "";
-        setWa(normalizePkPhone(txt));
-      } catch {}
-    };
-    el.addEventListener("paste", onPaste as any);
-    return () => el.removeEventListener("paste", onPaste as any);
-  }, []);
-
-  const dir: "ltr" | "rtl" = lang === "ur" ? "rtl" : "ltr";
-
-  useEffect(() => {
-    if (reduce) return;
-    const t = setTimeout(() => setBgReady(true), 200);
-    return () => clearTimeout(t);
-  }, [reduce]);
-
-  // Load cookie preferences
-  useEffect(() => {
-    try {
-      const raw =
-        typeof localStorage !== "undefined"
-          ? localStorage.getItem("rb-cookies")
-          : null;
-      if (raw) setCookiePrefs(JSON.parse(raw));
-      else setCookiePrefs({ analytics: false });
-    } catch {
-      setCookiePrefs({ analytics: false });
-    }
-  }, []);
-
-  // Analytics loader (consent-based)
-  useEffect(() => {
-    try {
-      const head = document.head;
-      const hasConsent = Boolean(cookiePrefs?.analytics);
-      const preId = "rb-preconnect-plausible";
-      const scrId = "rb-plausible";
-      if (hasConsent) {
-        if (head && !document.getElementById(preId)) {
-          const pre = document.createElement("link");
-          pre.id = preId;
-          pre.rel = "preconnect";
-          pre.href = "https://plausible.io";
-          pre.crossOrigin = "anonymous";
-          head.appendChild(pre);
-        }
-        if (head && !document.getElementById(scrId)) {
-          const s = document.createElement("script");
-          s.id = scrId;
-          s.defer = true;
-          s.setAttribute("data-domain", "rentback.app");
-          s.src = "https://plausible.io/js/plausible.js";
-          head.appendChild(s);
-        }
-      } else {
-        document.getElementById(preId)?.remove?.();
-        document.getElementById(scrId)?.remove?.();
-        try {
-          delete (window as any).plausible;
-        } catch {}
-      }
-    } catch {}
-  }, [cookiePrefs?.analytics]);
-
-  // Modal a11y: focus trap, ESC-to-close, and restore focus
-  useEffect(() => {
-    const anyOpen = Boolean(openLegal || openFounder || openCookies);
-    if (!anyOpen) return;
-
-    const closeAll = () => {
-      setOpenLegal(null);
-      setOpenFounder(false);
-      setOpenCookies(false);
-    };
-
-    try {
-      prevFocusRef.current = (document.activeElement as HTMLElement) || null;
-      const container = modalRef.current;
-      const selector =
-        'a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])';
-      const nodeList = container
-        ? (container.querySelectorAll(selector) as NodeListOf<HTMLElement>)
-        : null;
-      const focusables = nodeList
-        ? Array.from(nodeList).filter((el) => !el.hasAttribute("disabled"))
-        : [];
-      (focusables[0] || container)?.focus?.();
-
-      const onKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-          e.preventDefault();
-          closeAll();
-          return;
-        }
-        if (e.key === "Tab" && container && focusables.length) {
-          const first = focusables[0];
-          const last = focusables[focusables.length - 1];
-          const active = document.activeElement as HTMLElement | null;
-          if (e.shiftKey) {
-            if (!active || active === first || !container.contains(active)) {
-              e.preventDefault();
-              last.focus();
-            }
-          } else {
-            if (!active || active === last || !container.contains(active)) {
-              e.preventDefault();
-              first.focus();
-            }
-          }
-        }
-      };
-      document.addEventListener("keydown", onKeyDown);
-      return () => {
-        document.removeEventListener("keydown", onKeyDown);
-        try {
-          prevFocusRef.current?.focus?.();
-        } catch {}
-      };
-    } catch {}
-  }, [openLegal, openFounder, openCookies]);
-
-  const copy = useMemo(
-    () => ({
-      en: {
-        metaTagline: "Pakistan-wide",
-        heroTitle: "Turn your rent into rewards.",
-        heroSub:
-          "We are building the RentBack app. Pay by our card, your bank, or any digital bank. Earn points and redeem for bills and shopping. Join the app waitlist for early access.",
-        cta: "Join the app waitlist",
-        howTitle: "How it works",
-        how: [
-          {
-            title: "Pay rent",
-            desc:
-              "Use your preferred method: our card, your bank, or any digital bank.",
-          },
-          { title: "Earn points", desc: "Instant points on every verified payment." },
-          {
-            title: "Redeem rewards",
-            desc: "Mobile top-ups, utility bills, shopping vouchers.",
-          },
-        ],
-        whyTitle: "Why RentBack",
-        why: [
-          {
-            title: "Secure",
-            desc: "Built with licensed payment partners.",
-            icon: Shield,
-          },
-          {
-            title: "Rewarding",
-            desc: "Your biggest expense finally gives back.",
-            icon: Gift,
-          },
-          { title: "Simple", desc: "No extra steps or hidden fees.", icon: Zap },
-        ],
-        footerNote:
-          "RentBack is preparing an application to the State Bank of Pakistan Regulatory Sandbox. Rewards subject to terms.",
-        emailPh: "Email",
-        waPh: "Phone number",
-        cityPh: "City",
-        consent:
-          "I agree to receive occasional updates, including on WhatsApp if I provided a number.",
-        submit: "Notify me",
-        languageLabel: "EN",
-        successTitle: "You are in!",
-        successBody:
-          "We will email you early app access as we open city by city in Pakistan.",
-        policy: {
-          privacy: "Privacy",
-          terms: "Terms",
-          rewards: "Rewards T&Cs",
-          trust: "Trust & Security",
-        },
-        statusOperational: "Waiting approval",
-        viewStatus: "View status",
-        founderLabel: "Founder",
-        cookieLabel: "Cookie preferences",
-        cookieTitle: "Cookie preferences",
-        cookieDesc:
-          "Choose whether to allow anonymous analytics to help improve RentBack.",
-        cookieNecessary: "Strictly necessary (always on)",
-        cookieAnalytics: "Analytics (anonymous usage)",
-        cookieSave: "Save",
-        trustTitle: "Trust & Security",
-        trustPoints: [
-          "Encryption in transit and least-privilege access controls.",
-          "Payments handled by licensed PSO/PSP/EMI; we do not store full card details.",
-          "Minimal retention; delete on request subject to legal requirements.",
-          "Upcoming: 2FA, device binding, audit logging.",
-          "Report a vulnerability: help@rentback.app.",
-          "Status page & transparent incident reporting.",
-        ],
-      },
-      ur: {
-        metaTagline: "پورے پاکستان میں",
-        heroTitle: "اپنے کرائے کو انعامات میں بدلیں۔",
-        heroSub:
-          "ہم RentBack ایپ بنا رہے ہیں۔ ہمارے کارڈ، آپ کے بینک یا کسی بھی ڈیجیٹل بینک سے ادائیگی کریں۔ پوائنٹس کمائیں اور بلز و شاپنگ پر ریڈیم کریں۔ ایپ ویٹ لسٹ میں شامل ہوں۔",
-        cta: "ایپ ویٹ لسٹ میں شامل ہوں",
-        howTitle: "طریقہ کار",
-        how: [
-          {
-            title: "کرایہ ادا کریں",
-            desc:
-              "ہمارے کارڈ، آپ کے بینک یا کسی بھی ڈیجیٹل بینک — جو چاہیں استعمال کریں۔",
-          },
-          { title: "پوائنٹس کمائیں", desc: "ہر تصدیق شدہ ادائیگی پر فوری پوائنٹس۔" },
-          { title: "انعام حاصل کریں", desc: "موبائل ٹاپ اپ، یوٹیلیٹی بلز، واؤچرز۔" },
-        ],
-        whyTitle: "کیوں رینٹ بیک؟",
-        why: [
-          {
-            title: "محفوظ",
-            desc: "لائسنس یافتہ ادائیگی پارٹنرز کے ساتھ بنایا گیا۔",
-            icon: Shield,
-          },
-          {
-            title: "فائدہ مند",
-            desc: "آپ کا سب سے بڑا خرچہ اب واپس دے۔",
-            icon: Gift,
-          },
-          { title: "آسان", desc: "کوئی اضافی مرحلہ یا چُھپی فیس نہیں۔", icon: Zap },
-        ],
-        footerNote:
-          "رینٹ بیک اسٹیٹ بینک آف پاکستان کے ریگولیٹری سینڈ باکس کے لیے درخواست کی تیاری کر رہا ہے۔ ریوارڈز شرائط کے تابع ہیں۔",
-        emailPh: "ای میل",
-        waPh: "فون نمبر",
-        cityPh: "شہر",
-        consent:
-          "میں رضامند ہوں کہ وقتاً فوقتاً اپ ڈیٹس موصول کروں — اگر نمبر دیا ہے تو واٹس ایپ پر بھی۔",
-        submit: "مجھے اطلاع دیں",
-        successTitle: "آپ شامل ہو چکے ہیں!",
-        successBody:
-          "ہم جیسے جیسے شہروں میں لانچ کریں گے، آپ کو ایپ کا ابتدائی رسائی ای میل کریں گے۔",
-        policy: {
-          privacy: "پرائیویسی",
-          terms: "شرائط",
-          rewards: "ریوارڈز کی شرائط",
-          trust: "اعتماد اور سکیورٹی",
-        },
-        statusOperational: "منظوری کا انتظار",
-        viewStatus: "اسٹیٹس دیکھیں",
-        founderLabel: "بانی",
-        cookieLabel: "کوکی ترجیحات",
-        cookieTitle: "کوکی ترجیحات",
-        cookieDesc:
-          "منتخب کریں کہ کیا آپ گمنام اینالیٹکس کی اجازت دیتے ہیں تاکہ RentBack بہتر ہو سکے۔",
-        cookieNecessary: "لازمی (ہمیشہ فعال)",
-        cookieAnalytics: "تجزیات (گمنام استعمال)",
-        cookieSave: "محفوظ کریں",
-        trustTitle: "اعتماد اور سکیورٹی",
-        trustPoints: [
-          "ترسیل کے دوران انکرپشن اور محدود رسائی کنٹرولز۔",
-          "ادائیگیاں لائسنس یافتہ PSO/PSP/EMI سنبھالتے ہیں؛ ہم مکمل کارڈ تفصیل محفوظ نہیں کرتے۔",
-          "کم سے کم مدت کے لیے ڈیٹا رکھنا؛ قانون کے مطابق حذف کی درخواست ممکن۔",
-          "جلد: 2FA، ڈیوائس بائنڈنگ، آڈٹ لاگنگ۔",
-          "کمزوری رپورٹ کریں: help@rentback.app.",
-          "اسٹیٹس پیج اور شفاف انسیڈنٹ رپورٹنگ۔",
-        ],
-        languageLabel: "اردو",
-      },
-    }),
-    [lang]
-  );
-
-  const t = copy[lang];
-
-  // SEO/OG/Twitter + favicons, and meta theme-color tied to darkMode
-  const SEO: React.FC = () => {
-    useEffect(() => {
-      const isUr = lang === "ur";
-      const title = isUr
-        ? "RentBack — اپنے کرائے کو انعامات میں بدلیں"
-        : "RentBack — Turn your rent into rewards";
-      const description = isUr
-        ? "ہم RentBack ایپ بنا رہے ہیں: ہمارے کارڈ، آپ کے بینک یا کسی بھی ڈیجیٹل بینک سے ادائیگی کریں، پوائنٹس کمائیں، بلز/شاپنگ پر ریڈیم کریں۔ ویٹ لسٹ میں شامل ہوں۔"
-        : "We are building the RentBack app: pay by our card, your bank, or any digital bank; earn points, redeem for bills & shopping. Join the app waitlist.";
-
-      // Canonical + OG image
-      let canonical = "https://rentback.app/";
-      try {
-        if (
-          typeof window !== "undefined" &&
-          window.location &&
-          /^https?:/i.test(window.location.href)
-        ) {
-          canonical = window.location.href.split("#")[0];
-        }
-      } catch {}
-
-      let ogImage = "https://rentback.app/og.png";
-      try {
-        if (
-          typeof window !== "undefined" &&
-          window.location &&
-          /^https?:/i.test(window.location.href)
-        ) {
-          const origin = window.location.origin || "";
-          ogImage = origin ? origin + "/og.png" : "https://rentback.app/og.png";
-        }
-      } catch {}
-
-      const upsert = (selector: string, create: () => HTMLElement) => {
-        let el = document.head.querySelector(selector) as HTMLElement | null;
-        if (!el) {
-          el = create();
-          document.head.appendChild(el);
-        }
-        return el;
-      };
-
-      const setMetaName = (name: string, content: string, id?: string) => {
-        const el = upsert(id ? `meta#${id}` : `meta[name="${name}"]`, () => {
-          const m = document.createElement("meta");
-          if (id) m.id = id;
-          else m.setAttribute("name", name);
-          return m;
-        });
-        el.setAttribute("content", content);
-        if (!id) el.setAttribute("name", name);
-      };
-
-      const setMetaProp = (prop: string, content: string, id?: string) => {
-        const el = upsert(id ? `meta#${id}` : `meta[property="${prop}"]`, () => {
-          const m = document.createElement("meta");
-          if (id) m.id = id;
-          else m.setAttribute("property", prop);
-          return m;
-        });
-        el.setAttribute("content", content);
-        if (!id) el.setAttribute("property", prop);
-      };
-
-      const setLink = (
-        rel: string,
-        href: string,
-        id: string,
-        type?: string,
-        sizes?: string
-      ) => {
-        const el = upsert(`link#${id}`, () => {
-          const l = document.createElement("link");
-          l.id = id;
-          return l;
-        });
-        el.setAttribute("rel", rel);
-        el.setAttribute("href", href);
-        if (type) el.setAttribute("type", type);
-        else el.removeAttribute("type");
-        if (sizes) el.setAttribute("sizes", sizes);
-        else el.removeAttribute("sizes");
-      };
-
-      // Title & description
-      document.title = title;
-      setMetaName("description", description, "rb-desc");
-
-      // Language / locale metas
-      setMetaName("content-language", isUr ? "ur-PK" : "en-PK", "rb-lang");
-      setMetaProp("og:locale", isUr ? "ur_PK" : "en_PK", "rb-og-locale");
-
-      // Canonical
-      setLink("canonical", canonical, "rb-canonical");
-
-      // Open Graph
-      setMetaProp("og:title", title, "rb-og-title");
-      setMetaProp("og:description", description, "rb-og-desc");
-      setMetaProp("og:type", "website", "rb-og-type");
-      setMetaProp("og:url", canonical, "rb-og-url");
-      setMetaProp("og:image", ogImage, "rb-og-img");
-
-      // Twitter Card
-      setMetaName("twitter:card", "summary_large_image", "rb-tw-card");
-      setMetaName("twitter:title", title, "rb-tw-title");
-      setMetaName("twitter:description", description, "rb-tw-desc");
-      setMetaName("twitter:image", ogImage, "rb-tw-img");
-
-      // Favicons
-      setLink("icon", "/favicon.svg", "rb-ico-svg", "image/svg+xml");
-      setLink("icon", "/favicon-32.png", "rb-ico-32", "image/png", "32x32");
-      setLink("icon", "/favicon-16.png", "rb-ico-16", "image/png", "16x16");
-      setLink("apple-touch-icon", "/apple-touch-icon.png", "rb-apple");
-      setLink("mask-icon", "/safari-pinned-tab.svg", "rb-mask", "image/svg+xml");
-
-      // Theme color (match system)
-      setMetaName("theme-color", darkMode ? "#0a0a0a" : "#ffffff", "rb-theme");
-
-      // JSON-LD (Organization + WebSite)
-      const org = {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        name: "RentBack",
-        url: canonical,
-        logo: "/favicon.svg",
-      };
-      const site = {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        name: "RentBack",
-        url: canonical,
-      };
-      const ld = upsert("script#rb-ldjson", () => {
-        const s = document.createElement("script");
-        s.id = "rb-ldjson";
-        s.type = "application/ld+json";
-        return s;
-      });
-      (ld as HTMLScriptElement).textContent = JSON.stringify([org, site]);
-    }, [lang, darkMode]);
-    return null;
-  };
-
-  // Open printable legal page in new tab (simple HTML)
-  const openStandalone = (kind: "privacy" | "terms" | "rewards") => {
-    try {
-      track("legal_open_full", { doc: kind });
-      const title =
-        lang === "ur"
-          ? kind === "privacy"
-            ? "پرائیویسی پالیسی"
-            : kind === "terms"
-            ? "شرائطِ استعمال"
-            : "ریوارڈز کی شرائط"
-          : kind === "privacy"
-          ? "Privacy Policy"
-          : kind === "terms"
-          ? "Terms of Service"
-          : "Rewards Terms & Conditions";
-      const d = new Date().toLocaleDateString(lang === "ur" ? "ur-PK" : "en-PK", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-      const bodyEn =
-        kind === "privacy"
-          ? "We handle your information under Pakistani law and relevant SBP directives."
-          : kind === "terms"
-          ? "These terms govern your use of the app and website in Pakistan."
-          : "Points are not cash and redeem only for listed rewards.";
-      const bodyUr =
-        kind === "privacy"
-          ? "ہم آپ کی معلومات کو پاکستانی قوانین اور SBP ہدایات کے مطابق سنبھالتے ہیں۔"
-          : kind === "terms"
-          ? "یہ شرائط پاکستان میں ایپ اور ویب کے استعمال پر لاگو ہیں۔"
-          : "پوائنٹس نقد نہیں ہوتے اور صرف درج شدہ انعامات پر ریڈیم ہوتے ہیں۔";
-      const content =
-        "<!doctype html>" +
-        '<html lang="' +
-        (lang === "ur" ? "ur" : "en") +
-        '"><head>' +
-        '<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>' +
-        "<title>" +
-        title +
-        " — RentBack</title>" +
-        '<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Nastaliq Urdu",sans-serif;line-height:1.6;margin:2rem;max-width:840px}h1{font-size:1.4rem;margin-bottom:.25rem}.muted{color:#555}</style>' +
-        "</head><body><h1>" +
-        title +
-        '</h1><div class="muted">Last updated: ' +
-        d +
-        "</div><p>" +
-        (lang === "ur" ? bodyUr : bodyEn) +
-        "</p></body></html>";
-      const w = window.open("", "_blank", "noopener,noreferrer");
-      if (!w) return;
-      w.document.open();
-      w.document.write(content);
-      w.document.close();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Analytics helper (safe no-op)
-  const track = (event: string, props?: Record<string, any>) => {
-    try {
-      if (
-        cookiePrefs?.analytics &&
-        typeof window !== "undefined" &&
-        (window as any).plausible
-      ) {
-        (window as any).plausible(event, { props });
-      }
-      console.log("[analytics]", event, props);
-    } catch {}
-  };
+  // Endpoint (Google Apps Script)
+  const ENDPOINT =
+    "https://script.google.com/macros/s/AKfycbwCqHgI_5wkWTTorP_803gULbkVDuhLLs_lQnKN9k5dl1NPJx7XKEHj8IOcIyIENZgm/exec";
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
+    setErr(null);
 
-    setError(null);
-    setLoading(true);
-
-    // Trim inputs
     const em = email.trim();
-    const wv = wa.trim();
-    const cc = city.trim();
-    if (em !== email) setEmail(em);
-    if (wv !== wa) setWa(wv);
-    if (cc !== city) setCity(cc);
+    const ph = phone.trim();
+    const ct = city.trim();
 
-    // Simple rate-limit (3s)
-    const now = Date.now();
-    if (now - lastSubmitRef.current < 3000) {
-      setError(
-        lang === "ur"
-          ? "براہِ کرم کچھ دیر بعد دوبارہ کوشش کریں۔"
-          : "Please wait a moment before submitting again."
-      );
-      setLoading(false);
+    const emailOk = /.+@.+\..+/.test(em);
+    const phoneOk = isValidPkMobile(ph);
+
+    if (!emailOk) {
+      setErr(t.errors.email);
       return;
     }
-    lastSubmitRef.current = now;
-
-    // Honeypot + time-to-fill heuristic
-    const hpVal = hpRef.current?.value || "";
-    const timeSinceOpen = now - startRef.current;
-    const looksLikeBot = hpVal.length > 0 || timeSinceOpen < 1000;
-
-    // Validate
-    const errs = validateNow(em, wv);
-    setTouched({ email: true, wa: true, city: true });
-    setFieldErrors(errs);
-    if (Object.keys(errs).length > 0) {
-      track("form_validation_error", { fields: Object.keys(errs) });
-      const firstId = errs.email ? "rb-email" : errs.wa ? "rb-wa" : undefined;
-      if (firstId) document.getElementById(firstId)?.focus();
-      setLoading(false);
+    if (!phoneOk) {
+      setErr(t.errors.phone);
       return;
     }
 
+    setLoading(true);
     try {
-      const endpoint =
-        (typeof window !== "undefined" && (window as any).RB_WAITLIST_ENDPOINT) ||
-        _WAITLIST_ENDPOINT;
-      const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+      // UTM (best-effort)
       let utmSource = "",
         utmMedium = "",
         utmCampaign = "";
       try {
-        const params =
-          typeof window !== "undefined"
-            ? new URLSearchParams(window.location.search)
-            : null;
-        if (params) {
-          utmSource = params.get("utm_source") || "";
-          utmMedium = params.get("utm_medium") || "";
-          utmCampaign = params.get("utm_campaign") || "";
-        }
+        const params = new URLSearchParams(window.location.search);
+        utmSource = params.get("utm_source") || "";
+        utmMedium = params.get("utm_medium") || "";
+        utmCampaign = params.get("utm_campaign") || "";
       } catch {}
 
-      if (endpoint) {
-        const payload = {
-          table: "waitlist", // ensure unified Apps Script routes to Waitlist tab
-          email: em,
-          phone: wv,
-          city: cc,
-          lang,
-          theme: darkMode ? "dark" : "light",
-          utmSource,
-          utmMedium,
-          utmCampaign,
-          analytics: Boolean(cookiePrefs?.analytics),
-          bot: looksLikeBot,
-          ua,
-          ts: new Date().toISOString(),
-          key: _WAITLIST_SECRET || undefined,
-        } as const;
-        try {
-          await fetch(endpoint, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-        } catch {}
-      } else {
-        await new Promise((r) => setTimeout(r, looksLikeBot ? 200 : 500));
-      }
-      setSubmitted(true);
-      track("signup_submitted", {
+      const payload = {
+        table: "waitlist",
+        email: em,
+        phone: normalizePkPhone(ph),
+        city: ct,
         lang,
-        hasWa: Boolean(wv),
-        city: cc,
-        source: "landing",
-        bot: looksLikeBot,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        ua: typeof navigator !== "undefined" ? navigator.userAgent : "",
+        ts: new Date().toISOString(),
+      };
+
+      await fetch(ENDPOINT, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-    } catch (err) {
-      console.error(err);
-      setError(
-        lang === "ur"
-          ? "عارضی مسئلہ۔ براہ کرم دوبارہ کوشش کریں۔"
-          : "Temporary issue. Please try again."
-      );
+
+      setSubmitted(true);
+      setEmail("");
+      setPhone("");
+      setCity("");
+    } catch (e) {
+      setErr(lang === "ur" ? "عارضی مسئلہ۔ دوبارہ کوشش کریں۔" : "Temporary issue. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const fadeUp = {
-    initial: { opacity: 0, y: 24 },
-    whileInView: { opacity: 1, y: 0 },
-    viewport: { once: true, amount: 0.3 },
-    transition: { duration: 0.5, ease: "easeOut" },
-  } as const;
-  const floatIn = {
-    initial: { opacity: 0, y: 16, scale: 0.98 },
-    whileInView: { opacity: 1, y: 0, scale: 1 },
-    viewport: { once: true, amount: 0.4 },
-    transition: { duration: 0.55, ease: "easeOut" },
-  } as const;
-
-  // Tiny runtime checks
-  useEffect(() => {
-    try {
-      console.assert(!!document.getElementById("rb-email"), "TEST: email field exists");
-      console.assert(!!document.getElementById("rb-wa"), "TEST: phone field exists");
-      console.assert(!!document.querySelector('a[href="#privacy"]'), "TEST: privacy link exists");
-      console.assert(/^(?:[+]92)?0?3[0-9]{9}$/.test("+923001234567"), "TEST: pk phone regex works (+92...)");
-      console.assert(/^(?:[+]92)?0?3[0-9]{9}$/.test("03001234567"), "TEST: pk phone regex works (03...)");
-      console.assert(!!document.getElementById("rb-join-form"), "TEST: join form exists");
-    } catch {}
-  }, []);
-
   return (
-    <>
-      {/* Ensure the endpoint is available before hydration */}
-      <Script id="rb-waitlist" strategy="beforeInteractive">
-        {`window.RB_WAITLIST_ENDPOINT="${FALLBACK_WAITLIST_ENDPOINT}";window.RB_WAITLIST_SECRET="";`}
-      </Script>
+    <div dir={dir} style={{ minHeight: "100vh", background: BRAND.bg, color: BRAND.text }}>
+      {/* gradient animation keyframes */}
+      <style>
+        {
+          "@keyframes rb-gradient-move {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}"
+        }
+      </style>
 
-      <div className={darkMode ? "dark" : ""} dir={dir}>
-        <SEO />
-        {/* Skip link for keyboard users */}
-        <a
-          href="#main"
-          className="sr-only focus:not-sr-only fixed top-2 left-2 z-50 rounded-xl px-3 py-2 bg-emerald-600 text-white shadow focus:outline-none"
-        >
-          {lang === "ur" ? "مواد پر جائیں" : "Skip to content"}
-        </a>
-        {/* Global focus-visible ring for accessibility */}
-        <style
-          dangerouslySetInnerHTML={{
-            __html:
-              "a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #10b981;outline-offset:2px}",
-          }}
-        />
-        <div className="min-h-screen bg-white text-gray-900 dark:bg-neutral-950 dark:text-gray-100">
-          {/* Header (CLEAN) */}
-          <header className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-neutral-950/70 border-b border-black/5 dark:border-white/10">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <svg
-                  aria-hidden
-                  viewBox="0 0 24 24"
-                  className="size-6 text-emerald-600 dark:text-emerald-300"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.8}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 11.5L12 4l9 7.5" />
-                  <path d="M5 10v9h14v-9" />
-                </svg>
-                <span className="font-semibold">RentBack</span>
-                <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-300/20 dark:text-amber-300">
-                  {t.statusOperational}
-                </span>
-              </div>
-              <div />
-            </div>
-          </header>
-
-          {/* Hero */}
-          <main id="main">
-            {/* … the rest of your component JSX remains identical … */}
-            {/* I’ve intentionally left all content below unchanged to avoid regressions. */}
-            {/* ======= COPY EVERYTHING FROM YOUR ORIGINAL RETURN AFTER <main id="main"> DOWN TO THE CLOSING TAGS ======= */}
-          </main>
-
-          {/* Footer / Modals — unchanged */}
+      {/* Header */}
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          height: 60,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 16px",
+          background: "#ffffffcc",
+          backdropFilter: "saturate(1.8) blur(8px)",
+          borderBottom: "1px solid rgba(0,0,0,0.06)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
+          <BrandLogo />
+          {t.appName}
+          <span
+            style={{
+              marginLeft: 8,
+              fontSize: 11,
+              padding: "4px 8px",
+              borderRadius: 999,
+              background: "#fffbeb",
+              color: "#92400e",
+              border: "1px solid rgba(146,64,14,0.15)",
+            }}
+          >
+            {t.statusPill}
+          </span>
         </div>
-      </div>
-    </>
+        <div />
+      </header>
+
+      {/* Main */}
+      <main style={{ maxWidth: 1120, margin: "0 auto", padding: 16 }}>
+        {/* Hero */}
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.1fr 0.9fr",
+            gap: 16,
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <h1 style={{ fontSize: 32, lineHeight: 1.2, marginBottom: 8, fontWeight: 800 }}>
+              {t.heroTitle}
+            </h1>
+            <p style={{ opacity: 0.8, lineHeight: 1.7, fontSize: 16 }}>{t.heroSub}</p>
+
+            {/* Waitlist form */}
+            <form
+              onSubmit={onSubmit}
+              style={{
+                marginTop: 16,
+                padding: 14,
+                borderRadius: 14,
+                border: "1px solid rgba(0,0,0,0.06)",
+                background: BRAND.surface,
+                boxShadow: "0 1px 0 rgba(0,0,0,0.02)",
+                display: "grid",
+                gap: 8,
+                maxWidth: 520,
+              }}
+            >
+              {submitted ? (
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    background: "#ecfdf5",
+                    border: `1px solid ${BRAND.ring}`,
+                  }}
+                >
+                  <div style={{ fontWeight: 700 }}>{t.successTitle}</div>
+                  <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{t.successBody}</div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={t.email}
+                      inputMode="email"
+                      style={{
+                        padding: 12,
+                        borderRadius: 12,
+                        border: "1px solid rgba(0,0,0,0.1)",
+                        background: BRAND.surface,
+                      }}
+                    />
+                    <input
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      onBlur={(e) => setPhone(normalizePkPhone(e.target.value))}
+                      placeholder={t.phone}
+                      inputMode="tel"
+                      id="rb-wa"
+                      style={{
+                        padding: 12,
+                        borderRadius: 12,
+                        border: "1px solid rgba(0,0,0,0.1)",
+                        background: BRAND.surface,
+                      }}
+                    />
+                    <input
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder={t.city}
+                      style={{
+                        padding: 12,
+                        borderRadius: 12,
+                        border: "1px solid rgba(0,0,0,0.1)",
+                        background: BRAND.surface,
+                      }}
+                    />
+                  </div>
+
+                  {err ? (
+                    <div style={{ color: "#b91c1c", fontSize: 13, marginTop: 4 }}>{err}</div>
+                  ) : null}
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        border: `1px solid ${BRAND.ring}`,
+                        background: BRAND.primary,
+                        color: "#fff",
+                        fontWeight: 700,
+                        opacity: loading ? 0.7 : 1,
+                      }}
+                    >
+                      {t.join}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+
+          <div style={{ display: "grid", placeItems: "center" }}>
+            <CardVisual />
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section style={{ marginTop: 24 }}>
+          <div style={{ fontWeight: 800, marginBottom: 10 }}>{t.howTitle}</div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 10,
+            }}
+          >
+            {t.how.map((x: any, i: number) => (
+              <div
+                key={i}
+                style={{
+                  padding: 14,
+                  borderRadius: 14,
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  background: BRAND.surface,
+                }}
+              >
+                <div style={{ fontWeight: 700 }}>{x.t}</div>
+                <div style={{ opacity: 0.8, fontSize: 13, marginTop: 6 }}>{x.d}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Why RentBack */}
+        <section style={{ marginTop: 24 }}>
+          <div style={{ fontWeight: 800, marginBottom: 10 }}>{t.whyTitle}</div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 10,
+            }}
+          >
+            {t.why.map((x: any, i: number) => (
+              <div
+                key={i}
+                style={{
+                  padding: 14,
+                  borderRadius: 14,
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  background: BRAND.surface,
+                }}
+              >
+                <div style={{ fontWeight: 700 }}>{x.t}</div>
+                <div style={{ opacity: 0.8, fontSize: 13, marginTop: 6 }}>{x.d}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer
+        style={{
+          marginTop: 24,
+          padding: 16,
+          borderTop: "1px solid rgba(0,0,0,0.06)",
+          background: BRAND.surface,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1120,
+            margin: "0 auto",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ opacity: 0.8, fontSize: 13, maxWidth: 700 }}>{t.footerNote}</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={() => window.open(`/legal/privacy?lang=${lang}`, "_blank")}
+              style={linkBtn}
+            >
+              {t.footer.privacy}
+            </button>
+            <button
+              onClick={() => window.open(`/legal/terms?lang=${lang}`, "_blank")}
+              style={linkBtn}
+            >
+              {t.footer.terms}
+            </button>
+            <FounderButton lang={lang} t={t} />
+            <div style={{ width: 1, height: 16, background: "rgba(0,0,0,0.08)" }} />
+            <span style={{ fontSize: 12, opacity: 0.8 }}>{t.footer.lang}:</span>
+            <button
+              onClick={() => setLang("en")}
+              style={{
+                ...pillBtn,
+                background: lang === "en" ? "#ecfdf5" : BRAND.surface,
+                borderColor: lang === "en" ? BRAND.primary : BRAND.ring,
+                color: lang === "en" ? BRAND.primary : BRAND.text,
+              }}
+            >
+              {t.footer.english}
+            </button>
+            <button
+              onClick={() => setLang("ur")}
+              style={{
+                ...pillBtn,
+                background: lang === "ur" ? "#ecfdf5" : BRAND.surface,
+                borderColor: lang === "ur" ? BRAND.primary : BRAND.ring,
+                color: lang === "ur" ? BRAND.primary : BRAND.text,
+              }}
+            >
+              {t.footer.urdu}
+            </button>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
+
+// ---------- Small UI helpers ----------
+const linkBtn: React.CSSProperties = {
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  padding: 6,
+  fontSize: 13,
+  textDecoration: "underline",
+};
+
+const pillBtn: React.CSSProperties = {
+  padding: "6px 10px",
+  borderRadius: 999,
+  border: `1px solid ${BRAND.ring}`,
+  background: BRAND.surface,
+  cursor: "pointer",
+  fontWeight: 600,
+  fontSize: 12,
+};
+
+// Founder button → modal
+const FounderButton: React.FC<{ lang: "en" | "ur"; t: I18n }> = ({ lang, t }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={() => setOpen(true)} style={linkBtn}>
+        {t.footer.founder}
+      </button>
+      {open ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            background: "rgba(0,0,0,0.35)",
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              background: BRAND.surface,
+              borderRadius: 16,
+              border: "1px solid rgba(0,0,0,0.08)",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+              padding: 16,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
+                <BrandLogo /> {t.footer.founder}
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+                style={{ border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: 6, cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontWeight: 700 }}>{t.founder.name}</div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>{t.founder.title}</div>
+              <div style={{ marginTop: 8 }}>
+                <a href="mailto:help@rentback.app" style={{ textDecoration: "underline" }}>
+                  {t.founder.email}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+};
