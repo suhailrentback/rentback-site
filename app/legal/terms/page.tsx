@@ -1,90 +1,109 @@
-// app/legal/terms/page.tsx
-export const metadata = {
-  title: "Terms of Service — RentBack",
-  description: "Terms that govern the use of RentBack.",
-};
+import type { Metadata } from "next";
 
-type PageProps = { searchParams?: { [key: string]: string | string[] | undefined } };
-type Lang = "en" | "ur";
+export const dynamic = "force-static";
 
-const t = {
+type TermsSearchProps = { searchParams?: Record<string, string | string[] | undefined> };
+
+const copy = {
   en: {
-    title: "Terms of Service",
-    effective: "Effective:",
-    intro: "Welcome to RentBack. By accessing or using our products, you agree to these Terms.",
-    sections: [
-      { h: "1) Eligibility & Account", p: [
-        "You must be legally able to enter a contract under Pakistani law.",
-        "KYC/identity checks may be required to access certain features and limits.",
-      ]},
-      { h: "2) Payments & Rewards (Demo)", p: [
-        "The current app preview simulates payments and rewards; no real funds move.",
-        "Live services, when enabled, will be provided via licensed partners and subject to their terms.",
-      ]},
-      { h: "3) Acceptable Use", p: [
-        "No illegal activity, fraud, or infringement.",
-        "Do not attempt to circumvent controls or misuse the platform.",
-      ]},
-      { h: "4) Liability", p: [
-        "To the extent permitted by law, RentBack is not liable for indirect or consequential losses.",
-        "Nothing limits liability that cannot be limited by law.",
-      ]},
-      { h: "5) Changes", p: ["We may update these Terms; continued use means acceptance of the changes."]},
-      { h: "6) Governing Law", p: ["These Terms are governed by the laws of Pakistan."]},
-      { h: "7) Contact", p: ["help@rentback.app"]},
-    ],
+    title: "Terms of Service — RentBack",
+    updated: "Last updated: 3 September 2025",
+    intro:
+      "These Terms govern your access to and use of RentBack. By using the service, you agree to these Terms.",
+    sections: {
+      useTitle: "Use of Service",
+      useItems: [
+        "You must provide accurate information and comply with applicable laws of Pakistan.",
+        "You will not misuse the service, attempt unauthorized access, or interfere with operations.",
+      ],
+      paymentsTitle: "Payments & Rewards",
+      paymentsItems: [
+        "Payments are facilitated via licensed partners; demo mode does not move real funds.",
+        "Rewards redemptions are subject to availability and partner terms.",
+      ],
+      legalTitle: "Legal",
+      legalItems: [
+        "These Terms are governed by the laws of Pakistan.",
+        "We may update these Terms; continued use means acceptance of changes.",
+      ],
+      contactTitle: "Contact",
+      contact: "help@rentback.app",
+    },
   },
   ur: {
-    title: "شرائطِ استعمال",
-    effective: "موثر تاریخ:",
-    intro: "RentBack میں خوش آمدید۔ ہماری مصنوعات استعمال کرنے سے آپ ان شرائط کو قبول کرتے ہیں۔",
-    sections: [
-      { h: "1) اہلیت اور اکاؤنٹ", p: [
-        "آپ پاکستانی قانون کے تحت معاہدہ کرنے کے اہل ہوں۔",
-        "بعض فیچرز/حدود کے لیے KYC یا شناختی تصدیق درکار ہو سکتی ہے۔",
-      ]},
-      { h: "2) ادائیگیاں اور انعامات (ڈیمو)", p: [
-        "موجودہ ایپ پری ویو میں ادائیگیاں/انعامات کی نقل بنتی ہے؛ حقیقی رقم منتقل نہیں ہوتی۔",
-        "لائیو سروسز فعال ہونے پر لائسنس یافتہ پارٹنرز کے ذریعے فراہم ہوں گی اور ان کی شرائط لاگو ہوں گی۔",
-      ]},
-      { h: "3) قابلِ قبول استعمال", p: [
-        "غیر قانونی سرگرمی، فراڈ یا خلاف ورزی ممنوع ہے۔",
-        "کنٹرولز سے بچنے یا پلیٹ فارم کے غلط استعمال کی کوشش نہ کریں۔",
-      ]},
-      { h: "4) ذمہ داری", p: [
-        "قانون کے مطابق، RentBack بالواسطہ یا بالاثبات نقصانات کا ذمہ دار نہیں ہوگا۔",
-        "ایسی ذمہ داری محدود نہیں کی جائے گی جو قانوناً محدود نہیں کی جا سکتی۔",
-      ]},
-      { h: "5) تبدیلیاں", p: ["ہم ان شرائط کو اپ ڈیٹ کر سکتے ہیں؛ استعمال جاری رکھنے کا مطلب قبولیت ہے۔"]},
-      { h: "6) نافذ قانون", p: ["یہ شرائط پاکستان کے قوانین کے تحت ہیں۔"]},
-      { h: "7) رابطہ", p: ["help@rentback.app"]},
-    ],
+    title: "شرائطِ استعمال — RentBack",
+    updated: "آخری تازہ کاری: 3 ستمبر 2025",
+    intro:
+      "یہ شرائط RentBack تک رسائی اور استعمال کو ریگولیٹ کرتی ہیں۔ سروس استعمال کرنے سے آپ ان شرائط سے اتفاق کرتے ہیں۔",
+    sections: {
+      useTitle: "سروس کا استعمال",
+      useItems: [
+        "آپ درست معلومات فراہم کریں گے اور پاکستان کے قابل اطلاق قوانین کی پابندی کریں گے۔",
+        "آپ سروس کا غلط استعمال، غیر مجاز رسائی کی کوشش، یا آپریشنز میں مداخلت نہیں کریں گے۔",
+      ],
+      paymentsTitle: "ادائیگیاں اور انعامات",
+      paymentsItems: [
+        "ادائیگیاں لائسنس یافتہ پارٹنرز کے ذریعے انجام پاتی ہیں؛ ڈیمو موڈ میں حقیقی رقم منتقل نہیں ہوتی۔",
+        "انعامات ریڈیمپشن دستیابی اور پارٹنر کی شرائط کے تابع ہیں۔",
+      ],
+      legalTitle: "قانونی",
+      legalItems: [
+        "یہ شرائط پاکستان کے قوانین کے تحت ہیں۔",
+        "ہم ان شرائط کو اپ ڈیٹ کر سکتے ہیں؛ سروس کے مسلسل استعمال کا مطلب تبدیلیوں کی قبولیت ہے۔",
+      ],
+      contactTitle: "رابطہ",
+      contact: "help@rentback.app",
+    },
   },
+} as const;
+
+export const metadata: Metadata = {
+  title: "Terms of Service — RentBack",
+  description: "The rules for using RentBack.",
 };
 
-export default function TermsPage({ searchParams }: PageProps) {
-  const lang = (searchParams?.lang === "ur" ? "ur" : "en") as Lang;
-  const dir = lang === "ur" ? "rtl" : "ltr";
-  const c = t[lang];
+export default function Page({ searchParams }: TermsSearchProps) {
+  const lp = searchParams?.lang;
+  const lang = Array.isArray(lp) ? lp[0] : lp;
+  const l = lang === "ur" ? "ur" : "en";
+  const t = copy[l];
+  const dir: "ltr" | "rtl" = l === "ur" ? "rtl" : "ltr";
 
   return (
-    <div dir={dir}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>{c.title}</h1>
-      <div style={{ opacity: 0.7, fontSize: 13, marginBottom: 14 }}>
-        {c.effective} 01 Oct 2025
-      </div>
-      <p style={{ lineHeight: 1.7, marginBottom: 16 }}>{c.intro}</p>
+    <main
+      dir={dir}
+      lang={l}
+      className="mx-auto max-w-3xl px-4 py-12 prose prose-zinc dark:prose-invert"
+    >
+      <h1>{t.title}</h1>
+      <p>
+        <em>{t.updated}</em>
+      </p>
+      <p>{t.intro}</p>
 
-      <div style={{ display: "grid", gap: 16 }}>
-        {c.sections.map((s, i) => (
-          <section key={i} style={{ padding: 12, borderRadius: 12, background: "#fff", border: "1px solid rgba(0,0,0,0.06)" }}>
-            <h2 style={{ fontWeight: 700, marginBottom: 6 }}>{s.h}</h2>
-            <ul style={{ paddingInlineStart: 18, lineHeight: 1.7 }}>
-              {s.p.map((p, j) => <li key={j}>{p}</li>)}
-            </ul>
-          </section>
+      <h2>{t.sections.useTitle}</h2>
+      <ul>
+        {t.sections.useItems.map((li, i) => (
+          <li key={i}>{li}</li>
         ))}
-      </div>
-    </div>
+      </ul>
+
+      <h2>{t.sections.paymentsTitle}</h2>
+      <ul>
+        {t.sections.paymentsItems.map((li, i) => (
+          <li key={i}>{li}</li>
+        ))}
+      </ul>
+
+      <h2>{t.sections.legalTitle}</h2>
+      <ul>
+        {t.sections.legalItems.map((li, i) => (
+          <li key={i}>{li}</li>
+        ))}
+      </ul>
+
+      <h2>{t.sections.contactTitle}</h2>
+      <p>{t.sections.contact}</p>
+    </main>
   );
 }
