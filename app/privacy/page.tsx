@@ -1,126 +1,191 @@
-// Server component (no "use client")
-import { cookies } from "next/headers";
+"use client";
+import React, { useEffect, useState } from "react";
 
-export const dynamic = "force-static";
+// ---- Brand (same palette) ----
+const BRAND = {
+  primary: "#059669",
+  teal: "#14b8a6",
+  bg: "#f6faf8",
+  surface: "#ffffff",
+  text: "#0b0b0b",
+  ring: "rgba(5,150,105,0.20)",
+} as const;
 
-export const metadata = {
-  title: "Privacy Policy — RentBack",
-  description: "How RentBack handles your data.",
-};
+type I18n = { [k: string]: any };
 
-const copy = {
+const copy: Record<"en" | "ur", I18n> = {
   en: {
     title: "Privacy Policy",
-    updated: "Last updated: 3 September 2025",
-    intro:
-      "We handle your information under Pakistani law and relevant SBP directives. We collect only what’s needed to operate RentBack and improve the service.",
-    collectTitle: "What we collect",
-    collect: [
-      "Contact details (email, phone), city, language.",
-      "Technical data (limited analytics if you consent).",
+    updated: "Last updated",
+    back: "Back",
+    appName: "RentBack",
+    sections: [
+      {
+        h: "What we collect",
+        p: "Basic account info (name, email), usage analytics, and content you submit in the app. Payment PAN is never stored by us; processing occurs via licensed partners.",
+      },
+      {
+        h: "How we use data",
+        p: "To operate the service, prevent fraud, improve features, and support you. We don’t sell personal data.",
+      },
+      {
+        h: "Retention & deletion",
+        p: "We keep only what’s necessary and delete on request within legal/contractual limits.",
+      },
+      {
+        h: "Security",
+        p: "Encryption in transit, least-privilege access, planned 2FA/device binding, and audit logs.",
+      },
+      {
+        h: "Contact",
+        p: "Questions or requests? Email help@rentback.app",
+      },
     ],
-    useTitle: "How we use it",
-    use: [
-      "Waitlist and product updates you request.",
-      "Service operations, fraud prevention, and support.",
-    ],
-    contactTitle: "Contact",
-    contact: "help@rentback.app",
   },
   ur: {
     title: "پرائیویسی پالیسی",
-    updated: "آخری بار اپڈیٹ: 3 ستمبر 2025",
-    intro:
-      "ہم آپ کی معلومات پاکستانی قانون اور متعلقہ اسٹیٹ بینک ہدایات کے تحت سنبھالتے ہیں۔ RentBack چلانے اور سروس بہتر بنانے کے لیے صرف ضروری معلومات اکٹھی کی جاتی ہیں۔",
-    collectTitle: "ہم کیا جمع کرتے ہیں",
-    collect: [
-      "رابطہ کی تفصیلات (ای میل، فون)، شہر، زبان۔",
-      "ٹیکنیکل ڈیٹا (صرف آپ کی اجازت سے محدود اینالیٹکس)۔",
+    updated: "آخری اپڈیٹ",
+    back: "واپس",
+    appName: "RentBack",
+    sections: [
+      {
+        h: "ہم کیا اکٹھا کرتے ہیں",
+        p: "بنیادی اکاؤنٹ معلومات (نام، ای میل)، استعمال کا اینالیٹکس، اور آپ کی فراہم کردہ معلومات۔ کارڈ کا مکمل نمبر ہم محفوظ نہیں کرتے؛ ادائیگی لائسنس یافتہ پارٹنرز کے ذریعے ہوتی ہے۔",
+      },
+      {
+        h: "ڈیٹا کا استعمال",
+        p: "سروس چلانے، دھوکہ دہی سے بچاؤ، فیچر بہتر کرنے اور سپورٹ کے لیے۔ ہم ذاتی ڈیٹا فروخت نہیں کرتے۔",
+      },
+      {
+        h: "رکھاؤ اور حذف",
+        p: "صرف ضروری مدت تک رکھتے ہیں اور قانونی حدود میں درخواست پر حذف کرتے ہیں۔",
+      },
+      {
+        h: "سیکورٹی",
+        p: "ٹرانزٹ میں انکرپشن، کم از کم رسائی، منصوبہ شدہ 2FA/ڈیوائس بائنڈنگ، اور آڈٹ لاگز۔",
+      },
+      {
+        h: "رابطہ",
+        p: "سوالات یا درخواستیں؟ help@rentback.app",
+      },
     ],
-    useTitle: "ہم کیسے استعمال کرتے ہیں",
-    use: [
-      "ویٹ لسٹ اور پروڈکٹ اپڈیٹس جو آپ مانگیں۔",
-      "سروس آپریشنز، فراڈ سے بچاؤ، اور سپورٹ۔",
-    ],
-    contactTitle: "رابطہ",
-    contact: "help@rentback.app",
   },
-} as const;
+};
+
+const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({ size = 20, stroke = BRAND.primary }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3 11.5L12 4l9 7.5" />
+    <path d="M5 10v9h14v-9" />
+  </svg>
+);
+
+const Pill: React.FC<{ onClick?: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
+  <button
+    onClick={onClick}
+    style={{
+      padding: "8px 12px",
+      borderRadius: 999,
+      border: `1px solid ${BRAND.ring}`,
+      background: BRAND.surface,
+      color: BRAND.primary,
+      fontWeight: 600,
+      cursor: "pointer",
+    }}
+  >
+    {children}
+  </button>
+);
+
+function initialLang(): "en" | "ur" {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("lang");
+    if (q === "en" || q === "ur") return q;
+    const saved = localStorage.getItem("rb-lang");
+    if (saved === "en" || saved === "ur") return saved;
+    if (/^ur/i.test(navigator.language || "")) return "ur";
+  } catch {}
+  return "en";
+}
 
 export default function PrivacyPage() {
-  const lang = cookies().get("rb-lang")?.value === "ur" ? "ur" : "en";
+  const [lang, setLang] = useState<"en" | "ur">(initialLang());
   const t = copy[lang];
+  const dir: "ltr" | "rtl" = lang === "ur" ? "rtl" : "ltr";
 
-  const dir = lang === "ur" ? "rtl" : "ltr";
-  const BRAND = {
-    primary: "#059669",
-    bg: "#f6faf8",
-    surface: "#ffffff",
-    ring: "rgba(5,150,105,0.20)",
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute("lang", lang);
+      document.documentElement.setAttribute("dir", dir);
+      localStorage.setItem("rb-lang", lang);
+    } catch {}
+  }, [lang, dir]);
+
+  const goBack = () => {
+    if (history.length > 1) history.back();
+    else window.location.href = "/";
   };
 
   return (
-    <html lang={lang} dir={dir}>
-      <body
+    <div style={{ minHeight: "100vh", background: BRAND.bg, color: BRAND.text }} dir={dir}>
+      <header
         style={{
-          margin: 0,
-          minHeight: "100vh",
-          background: BRAND.bg,
-          color: "#0b0b0b",
-          fontFamily:
-            lang === "ur"
-              ? "Noto Nastaliq Urdu, Noto Naskh Arabic, system-ui, -apple-system, Segoe UI, Roboto"
-              : "system-ui, -apple-system, Segoe UI, Roboto",
-          display: "grid",
-          placeItems: "start center",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          height: 56,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 14px",
+          background: "#ffffffcc",
+          backdropFilter: "saturate(1.8) blur(8px)",
+          borderBottom: "1px solid rgba(0,0,0,0.06)",
         }}
       >
-        <main style={{ width: "100%", maxWidth: 720, padding: 16 }}>
-          <div
-            style={{
-              border: "1px solid rgba(0,0,0,0.06)",
-              background: BRAND.surface,
-              borderRadius: 16,
-              overflow: "hidden",
-              boxShadow: "0 12px 30px rgba(5,150,105,0.08)",
-            }}
-          >
-            <header
-              style={{
-                padding: "16px 18px",
-                background:
-                  "linear-gradient(120deg, rgba(5,150,105,0.08), rgba(20,184,166,0.06))",
-                borderBottom: "1px solid rgba(0,0,0,0.06)",
-                fontWeight: 800,
-              }}
-            >
-              {t.title}
-            </header>
-
-            <section style={{ padding: 18, lineHeight: 1.7 }}>
-              <p style={{ opacity: 0.7, marginTop: 0 }}>{t.updated}</p>
-              <p>{t.intro}</p>
-
-              <h3 style={{ marginBottom: 8 }}>{t.collectTitle}</h3>
-              <ul style={{ paddingInlineStart: 18, marginTop: 6 }}>
-                {t.collect.map((li, i) => (
-                  <li key={i}>{li}</li>
-                ))}
-              </ul>
-
-              <h3 style={{ marginBottom: 8, marginTop: 18 }}>{t.useTitle}</h3>
-              <ul style={{ paddingInlineStart: 18, marginTop: 6 }}>
-                {t.use.map((li, i) => (
-                  <li key={i}>{li}</li>
-                ))}
-              </ul>
-
-              <h3 style={{ marginBottom: 8, marginTop: 18 }}>{t.contactTitle}</h3>
-              <p style={{ marginTop: 6 }}>{t.contact}</p>
-            </section>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={goBack} style={{ border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface, borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}>
+            ← {t.back}
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
+            <BrandLogo />
+            RentBack
           </div>
-        </main>
-      </body>
-    </html>
+        </div>
+        <Pill onClick={() => setLang((p) => (p === "en" ? "ur" : "en"))}>{lang === "en" ? "اردو" : "English"}</Pill>
+      </header>
+
+      <main style={{ maxWidth: 820, margin: "0 auto", padding: 16 }}>
+        <div
+          style={{
+            padding: 16,
+            borderRadius: 14,
+            border: "1px solid rgba(0,0,0,0.06)",
+            background: BRAND.surface,
+            boxShadow: "0 1px 0 rgba(0,0,0,0.02)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+            <h1 style={{ margin: 0, fontSize: 22 }}>{t.title}</h1>
+            <div style={{ opacity: 0.7, fontSize: 12 }}>
+              {t.updated}: {new Date().toLocaleDateString("en-PK")}
+            </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          {t.sections.map((s: any, i: number) => (
+            <section key={i} style={{ marginBottom: 14 }}>
+              <h2 style={{ margin: "8px 0", fontSize: 16 }}>{s.h}</h2>
+              <p style={{ margin: 0, lineHeight: 1.7 }}>{s.p}</p>
+            </section>
+          ))}
+
+          <div style={{ marginTop: 16, fontSize: 12, opacity: 0.7 }}>
+            © {new Date().getFullYear()} {t.appName}
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
