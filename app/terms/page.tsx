@@ -1,134 +1,198 @@
-// Server component (no "use client")
-import { cookies } from "next/headers";
+"use client";
+import React, { useEffect, useState } from "react";
 
-export const dynamic = "force-static";
+const BRAND = {
+  primary: "#059669",
+  teal: "#14b8a6",
+  bg: "#f6faf8",
+  surface: "#ffffff",
+  text: "#0b0b0b",
+  ring: "rgba(5,150,105,0.20)",
+} as const;
 
-export const metadata = {
-  title: "Terms of Service — RentBack",
-  description: "Your agreement with RentBack.",
-};
+type I18n = { [k: string]: any };
 
-const copy = {
+const copy: Record<"en" | "ur", I18n> = {
   en: {
     title: "Terms of Service",
-    updated: "Last updated: 3 September 2025",
-    intro:
-      "By using RentBack, you agree to these terms. Where applicable, payments are provided through licensed partners in Pakistan.",
+    updated: "Last updated",
+    back: "Back",
+    appName: "RentBack",
     sections: [
       {
-        h: "Eligibility",
-        p: "You must be able to enter a binding contract under Pakistani law.",
+        h: "Acceptance of terms",
+        p: "By using RentBack, you agree to these Terms and our Privacy Policy.",
       },
       {
-        h: "Use of Service",
-        p: "Don’t misuse the service, attempt unauthorized access, or violate applicable laws.",
+        h: "Use of service",
+        p: "Demo experiences may simulate payments or rewards without moving real funds. Real payments, when enabled, are processed by licensed partners.",
       },
       {
-        h: "Payments",
-        p: "Demo flows do not move real funds. Production payments, when enabled, are processed by licensed partners and may be subject to their terms.",
+        h: "Accounts & KYC",
+        p: "You are responsible for the information you provide. Higher limits and payouts may require identity verification (KYC).",
       },
       {
-        h: "Privacy",
-        p: "See our Privacy Policy for how we handle your data.",
+        h: "Prohibited activity",
+        p: "No illegal, fraudulent, or abusive behavior. We may suspend accounts that violate these terms.",
+      },
+      {
+        h: "Liability",
+        p: "Service is provided “as is”. To the maximum extent permitted by law, we disclaim warranties and limit liability.",
       },
       {
         h: "Contact",
-        p: "help@rentback.app",
+        p: "For questions: help@rentback.app",
       },
     ],
   },
   ur: {
     title: "شرائطِ استعمال",
-    updated: "آخری بار اپڈیٹ: 3 ستمبر 2025",
-    intro:
-      "RentBack استعمال کر کے آپ ان شرائط سے اتفاق کرتے ہیں۔ جہاں لاگو ہو، ادائیگیاں پاکستان میں لائسنس یافتہ پارٹنرز کے ذریعے فراہم کی جاتی ہیں۔",
+    updated: "آخری اپڈیٹ",
+    back: "واپس",
+    appName: "RentBack",
     sections: [
       {
-        h: "اہلیت",
-        p: "آپ پاکستانی قانون کے تحت معاہدہ کرنے کے اہل ہوں۔",
+        h: "شرائط کی منظوری",
+        p: "RentBack استعمال کرنے سے آپ ان شرائط اور ہماری پرائیویسی پالیسی سے اتفاق کرتے ہیں۔",
       },
       {
         h: "سروس کا استعمال",
-        p: "سروس کا غلط استعمال، غیر مجاز رسائی یا قوانین کی خلاف ورزی نہ کریں۔",
+        p: "ڈیمو تجربات میں حقیقی رقم کی منتقلی نہیں ہوتی۔ جب فعال ہوں، حقیقی ادائیگیاں لائسنس یافتہ پارٹنرز کے ذریعے ہوں گی۔",
       },
       {
-        h: "ادائیگیاں",
-        p: "ڈیمو فلو میں حقیقی رقم منتقل نہیں ہوتی۔ پروڈکشن ادائیگیاں (جب فعال ہوں) لائسنس یافتہ پارٹنرز کے ذریعے اور ان کی شرائط کے مطابق ہوں گی۔",
+        h: "اکاؤنٹس اور KYC",
+        p: "آپ فراہم کردہ معلومات کے ذمہ دار ہیں۔ زیادہ حدیں اور ادائیگیاں شناختی توثیق (KYC) سے مشروط ہوسکتی ہیں۔",
       },
       {
-        h: "پرائیویسی",
-        p: "آپ کے ڈیٹا کے بارے میں ہماری پرائیویسی پالیسی دیکھیں۔",
+        h: "ممنوعہ سرگرمیاں",
+        p: "غیر قانونی، فراڈیانہ یا بدسلوکی ممنوع ہے۔ خلاف ورزی پر اکاؤنٹ معطل کیا جاسکتا ہے۔",
+      },
+      {
+        h: "ذمہ داری",
+        p: "سروس ‘جوں کی توں’ فراہم کی جاتی ہے۔ قانون کے مطابق زیادہ سے زیادہ حد تک وارنٹیز اور ذمہ داری محدود ہے۔",
       },
       {
         h: "رابطہ",
-        p: "help@rentback.app",
+        p: "سوالات کے لیے: help@rentback.app",
       },
     ],
   },
-} as const;
+};
+
+const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({ size = 20, stroke = BRAND.primary }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3 11.5L12 4l9 7.5" />
+    <path d="M5 10v9h14v-9" />
+  </svg>
+);
+
+const Pill: React.FC<{ onClick?: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
+  <button
+    onClick={onClick}
+    style={{
+      padding: "8px 12px",
+      borderRadius: 999,
+      border: `1px solid ${BRAND.ring}`,
+      background: BRAND.surface,
+      color: BRAND.primary,
+      fontWeight: 600,
+      cursor: "pointer",
+    }}
+  >
+    {children}
+  </button>
+);
+
+function initialLang(): "en" | "ur" {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("lang");
+    if (q === "en" || q === "ur") return q;
+    const saved = localStorage.getItem("rb-lang");
+    if (saved === "en" || saved === "ur") return saved;
+    if (/^ur/i.test(navigator.language || "")) return "ur";
+  } catch {}
+  return "en";
+}
 
 export default function TermsPage() {
-  const lang = cookies().get("rb-lang")?.value === "ur" ? "ur" : "en";
+  const [lang, setLang] = useState<"en" | "ur">(initialLang());
   const t = copy[lang];
-  const dir = lang === "ur" ? "rtl" : "ltr";
-  const BRAND = {
-    primary: "#059669",
-    bg: "#f6faf8",
-    surface: "#ffffff",
+  const dir: "ltr" | "rtl" = lang === "ur" ? "rtl" : "ltr";
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute("lang", lang);
+      document.documentElement.setAttribute("dir", dir);
+      localStorage.setItem("rb-lang", lang);
+    } catch {}
+  }, [lang, dir]);
+
+  const goBack = () => {
+    if (history.length > 1) history.back();
+    else window.location.href = "/";
   };
 
   return (
-    <html lang={lang} dir={dir}>
-      <body
+    <div style={{ minHeight: "100vh", background: BRAND.bg, color: BRAND.text }} dir={dir}>
+      <header
         style={{
-          margin: 0,
-          minHeight: "100vh",
-          background: BRAND.bg,
-          color: "#0b0b0b",
-          fontFamily:
-            lang === "ur"
-              ? "Noto Nastaliq Urdu, Noto Naskh Arabic, system-ui, -apple-system, Segoe UI, Roboto"
-              : "system-ui, -apple-system, Segoe UI, Roboto",
-          display: "grid",
-          placeItems: "start center",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          height: 56,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 14px",
+          background: "#ffffffcc",
+          backdropFilter: "saturate(1.8) blur(8px)",
+          borderBottom: "1px solid rgba(0,0,0,0.06)",
         }}
       >
-        <main style={{ width: "100%", maxWidth: 720, padding: 16 }}>
-          <div
-            style={{
-              border: "1px solid rgba(0,0,0,0.06)",
-              background: BRAND.surface,
-              borderRadius: 16,
-              overflow: "hidden",
-              boxShadow: "0 12px 30px rgba(5,150,105,0.08)",
-            }}
-          >
-            <header
-              style={{
-                padding: "16px 18px",
-                background:
-                  "linear-gradient(120deg, rgba(5,150,105,0.08), rgba(20,184,166,0.06))",
-                borderBottom: "1px solid rgba(0,0,0,0.06)",
-                fontWeight: 800,
-              }}
-            >
-              {t.title}
-            </header>
-
-            <section style={{ padding: 18, lineHeight: 1.7 }}>
-              <p style={{ opacity: 0.7, marginTop: 0 }}>{t.updated}</p>
-              <p>{t.intro}</p>
-
-              {t.sections.map((s, i) => (
-                <div key={i} style={{ marginTop: 16 }}>
-                  <h3 style={{ marginBottom: 8 }}>{s.h}</h3>
-                  <p style={{ marginTop: 6 }}>{s.p}</p>
-                </div>
-              ))}
-            </section>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={goBack} style={{ border: "1px solid rgba(0,0,0,0.1)", background: BRAND.surface, borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}>
+            ← {t.back}
+          </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: BRAND.primary }}>
+            <BrandLogo />
+            RentBack
           </div>
-        </main>
-      </body>
-    </html>
+        </div>
+        <Pill onClick={() => setLang((p) => (p === "en" ? "ur" : "en"))}>{lang === "en" ? "اردو" : "English"}</Pill>
+      </header>
+
+      <main style={{ maxWidth: 820, margin: "0 auto", padding: 16 }}>
+        <div
+          style={{
+            padding: 16,
+            borderRadius: 14,
+            border: "1px solid rgba(0,0,0,0.06)",
+            background: BRAND.surface,
+            boxShadow: "0 1px 0 rgba(0,0,0,0.02)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+            <h1 style={{ margin: 0, fontSize: 22 }}>{t.title}</h1>
+            <div style={{ opacity: 0.7, fontSize: 12 }}>
+              {t.updated}: {new Date().toLocaleDateString("en-PK")}
+            </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          {t.sections.map((s: any, i: number) => (
+            <section key={i} style={{ marginBottom: 14 }}>
+              <h2 style={{ margin: "8px 0", fontSize: 16 }}>{s.h}</h2>
+              <p style={{ margin: 0, lineHeight: 1.7 }}>{s.p}</p>
+            </section>
+          ))}
+
+          <div style={{ marginTop: 16, fontSize: 12, opacity: 0.7 }}>
+            © {new Date().getFullYear()} {t.appName}
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
