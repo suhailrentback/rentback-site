@@ -1,237 +1,124 @@
 // app/legal/privacy/page.tsx
-
-export const dynamic = "force-static";
-
-type Lang = "en" | "ur";
-
 export const metadata = {
   title: "Privacy Policy — RentBack",
-  description:
-    "How RentBack collects, uses, and protects your information under applicable Pakistani law and partner obligations.",
+  description: "How RentBack handles your data.",
 };
 
-export default function PrivacyPage({
-  searchParams,
-}: {
-  searchParams: { lang?: Lang };
-}) {
-  const lang: Lang = searchParams?.lang === "ur" ? "ur" : "en";
+type PageProps = { searchParams?: { [key: string]: string | string[] | undefined } };
+type Lang = "en" | "ur";
+
+const t = {
+  en: {
+    title: "Privacy Policy",
+    effective: "Effective:",
+    intro:
+      "This Privacy Policy explains how RentBack collects, uses, and protects your information. We operate in Pakistan and may work with licensed payment partners and KYC service providers.",
+    sections: [
+      { h: "1) Information We Collect", p: [
+        "Identity data (e.g., name, CNIC details if required for KYC, contact information).",
+        "Usage data (app interactions, device/browser, approximate location, referral UTM).",
+        "Payment and rewards metadata (no full card PAN is stored by us).",
+      ]},
+      { h: "2) How We Use Information", p: [
+        "To provide rent payments, rewards, support, and fraud prevention.",
+        "To comply with local laws and partner requirements (e.g., SBP sandbox participation).",
+        "To improve product performance and user experience.",
+      ]},
+      { h: "3) Sharing", p: [
+        "With licensed payment partners and KYC providers to process transactions and verification.",
+        "With service providers (cloud, analytics) under contracts that protect your data.",
+        "If required by law, regulation, or legal process.",
+      ]},
+      { h: "4) Retention & Deletion", p: [
+        "We retain data for as long as needed for legal, regulatory, and product purposes.",
+        "You may request deletion; we will honor it within legal/regulatory limits.",
+      ]},
+      { h: "5) Security", p: [
+        "Encryption in transit, least-privilege access, audit logging in scope.",
+        "Sensitive payments are handled by licensed partners; we avoid storing full PAN.",
+      ]},
+      { h: "6) Your Rights", p: [
+        "You may access, correct, or request deletion of your data, subject to law.",
+        "Contact us at help@rentback.app.",
+      ]},
+      { h: "7) International Transfers", p: [
+        "Your data may be processed in or outside Pakistan by our vendors subject to safeguards.",
+      ]},
+      { h: "8) Changes", p: ["We may update this policy. Material changes will be posted on this page."]},
+      { h: "9) Contact", p: ["Email: help@rentback.app"]},
+    ],
+  },
+  ur: {
+    title: "پرائیویسی پالیسی",
+    effective: "موثر تاریخ:",
+    intro:
+      "یہ پرائیویسی پالیسی واضح کرتی ہے کہ RentBack آپ کی معلومات کیسے جمع، استعمال اور محفوظ کرتا ہے۔ ہم پاکستان میں کام کرتے ہیں اور لائسنس یافتہ پیمنٹ پارٹنرز اور KYC سروس فراہم کنندگان کے ساتھ کام کر سکتے ہیں۔",
+    sections: [
+      { h: "1) ہم کون سی معلومات اکٹھی کرتے ہیں", p: [
+        "شناختی معلومات (نام، CNIC کی تفصیلات اگر KYC کے لیے ضروری ہو، رابطہ معلومات)۔",
+        "استعمال سے متعلق معلومات (ایپ میں سرگرمیاں، ڈیوائس/براؤزر، تخمینی لوکیشن، ریفرل UTM)۔",
+        "ادائیگی اور انعامات سے متعلق میٹا ڈیٹا (ہم مکمل کارڈ PAN محفوظ نہیں کرتے)۔",
+      ]},
+      { h: "2) معلومات کا استعمال", p: [
+        "کرایہ ادائیگی، انعامات، مدد اور فراڈ سے بچاؤ کے لیے۔",
+        "مقامی قوانین اور پارٹنر تقاضوں (جیسے SBP سینڈ باکس) کی تعمیل کے لیے۔",
+        "مصنوعات کی کارکردگی اور صارف تجربہ بہتر بنانے کے لیے۔",
+      ]},
+      { h: "3) شیئرنگ", p: [
+        "لائسنس یافتہ پیمنٹ پارٹنرز اور KYC فراہم کنندگان کے ساتھ لین دین اور تصدیق کے لیے۔",
+        "سروس فراہم کنندگان (کلاؤڈ، اینالیٹکس) کے ساتھ ایسے معاہدوں کے تحت جو آپ کے ڈیٹا کا تحفظ کریں۔",
+        "قانون، ضابطے یا قانونی تقاضے کی صورت میں۔",
+      ]},
+      { h: "4) برقرار رکھنا اور حذف", p: [
+        "قانونی، ریگولیٹری اور مصنوعات کے مقاصد کے لیے ضروری عرصے تک ڈیٹا محفوظ رکھا جاتا ہے۔",
+        "آپ حذف کرنے کی درخواست کر سکتے ہیں؛ قانونی حدود کے مطابق کاروائی کی جائے گی۔",
+      ]},
+      { h: "5) سکیورٹی", p: [
+        "ترسیل کے دوران انکرپشن، محدود رسائی، اور آڈٹ لاگنگ۔",
+        "حساس ادائیگیاں لائسنس یافتہ پارٹنرز کے ذریعے؛ مکمل PAN ہم محفوظ نہیں کرتے۔",
+      ]},
+      { h: "6) آپ کے حقوق", p: [
+        "آپ اپنی معلومات تک رسائی، درستگی یا حذف کی درخواست کر سکتے ہیں (قانون کے مطابق)۔",
+        "رابطہ: help@rentback.app",
+      ]},
+      { h: "7) بین الاقوامی منتقلی", p: [
+        "آپ کا ڈیٹا پاکستان کے اندر یا باہر ہمارے وینڈرز کے ذریعے حفاظتی انتظامات کے ساتھ پروسیس ہو سکتا ہے۔",
+      ]},
+      { h: "8) تبدیلیاں", p: [
+        "ہم وقتاً فوقتاً اس پالیسی کو اپ ڈیٹ کر سکتے ہیں؛ اہم تبدیلیاں اسی صفحے پر شائع کی جائیں گی۔",
+      ]},
+      { h: "9) رابطہ", p: ["ای میل: help@rentback.app"]},
+    ],
+  },
+};
+
+export default function PrivacyPage({ searchParams }: PageProps) {
+  const lang = (searchParams?.lang === "ur" ? "ur" : "en") as Lang;
   const dir = lang === "ur" ? "rtl" : "ltr";
+  const c = t[lang];
 
   return (
-    <article style={{ lineHeight: 1.7 }} dir={dir} lang={lang}>
-      {lang === "en" ? <English /> : <Urdu />}
-    </article>
+    <div dir={dir}>
+      <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>{c.title}</h1>
+      <div style={{ opacity: 0.7, fontSize: 13, marginBottom: 14 }}>
+        {c.effective} 01 Oct 2025
+      </div>
+      <p style={{ lineHeight: 1.7, marginBottom: 16 }}>{c.intro}</p>
+
+      <div style={{ display: "grid", gap: 16 }}>
+        {c.sections.map((s, i) => (
+          <section key={i} style={{ padding: 12, borderRadius: 12, background: "#fff", border: "1px solid rgba(0,0,0,0.06)" }}>
+            <h2 style={{ fontWeight: 700, marginBottom: 6 }}>{s.h}</h2>
+            <ul style={{ paddingInlineStart: 18, lineHeight: 1.7 }}>
+              {s.p.map((p, j) => <li key={j}>{p}</li>)}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </div>
   );
 }
 
-function English() {
-  return (
-    <>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>Privacy Policy</h1>
-      <p style={{ opacity: 0.8 }}>Last updated: {new Date().toLocaleDateString("en-PK")}</p>
-
-      <p>
-        RentBack helps tenants pay rent conveniently while earning rewards, and helps landlords
-        track incoming payments. This Privacy Policy explains how we collect, use, disclose, and
-        protect information in connection with our website and app (the “Service”).
-      </p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Who we are &amp; contact</h2>
-      <p>
-        Data controller: <b>RentBack</b> (Pakistan). Contact:{" "}
-        <a href="mailto:help@rentback.app">help@rentback.app</a>
-      </p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Scope</h2>
-      <p>
-        This Policy applies to information we process when you visit our sites, join our waitlist,
-        use demo features, or participate in pilot/sandbox cohorts operated with licensed partners.
-        For regulated services (e.g., payments, KYC/AML), partner privacy terms also apply.
-      </p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Information we collect</h2>
-      <ul>
-        <li>
-          <b>Account &amp; profile:</b> name, email, phone, preferred language, KYC status (not
-          started / in-progress / verified).
-        </li>
-        <li>
-          <b>Payment &amp; rewards (demo/pilot data):</b> amounts you enter, landlord labels, timestamps,
-          references, payment method labels, statuses, and reward selections.
-        </li>
-        <li>
-          <b>KYC/AML (partner-handled):</b> identity documents and checks by licensed partners;
-          RentBack receives status/metadata, not full PAN or raw documents.
-        </li>
-        <li>
-          <b>Support &amp; communications:</b> messages you send us and related metadata.
-        </li>
-        <li>
-          <b>Technical &amp; analytics:</b> device/browser info, IP-derived coarse location, event logs,
-          referral/UTM parameters, cookies or similar technologies.
-        </li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>How we use information</h2>
-      <ul>
-        <li>Provide and improve the Service and user experience.</li>
-        <li>Support, troubleshoot, secure the Service, and prevent fraud/abuse.</li>
-        <li>Comply with legal/regulatory obligations (including SBP/partner requirements).</li>
-        <li>Communicate product updates and service notices.</li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Legal bases (Pakistan-focused)</h2>
-      <ul>
-        <li><b>Contractual necessity</b> (to provide requested features).</li>
-        <li><b>Legitimate interests</b> (product improvement, security, fraud prevention).</li>
-        <li><b>Consent</b> (where required, e.g., optional analytics/marketing).</li>
-        <li><b>Legal compliance</b> (e.g., financial crime controls via partners).</li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Sharing &amp; disclosure</h2>
-      <ul>
-        <li>
-          <b>Service providers:</b> hosting, storage, monitoring, analytics, support tools (under DPAs/confidentiality).
-        </li>
-        <li>
-          <b>Licensed partners:</b> payments and KYC/AML; we minimize what we share and prefer status/metadata.
-        </li>
-        <li><b>Authorities:</b> where required by law or lawful process.</li>
-        <li><b>Business transfers:</b> merger, acquisition, or asset sale.</li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>International transfers</h2>
-      <p>
-        Data may be processed or stored outside Pakistan. We use reasonable safeguards consistent with
-        our obligations and partner requirements.
-      </p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Security</h2>
-      <ul>
-        <li>Encryption in transit; hardened cloud infrastructure.</li>
-        <li>Least-privilege access; administrative logging.</li>
-        <li>No full card PAN stored by RentBack; tokenized flows via licensed processors.</li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Retention</h2>
-      <p>
-        We keep data only as long as needed for the purposes above, to comply with law, or to resolve
-        disputes. Demo/test data can be deleted on request subject to legal bounds.
-      </p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Your choices &amp; rights</h2>
-      <ul>
-        <li>Access, correct, or delete certain information (subject to legal limits).</li>
-        <li>Opt out of non-essential emails or analytics where offered.</li>
-        <li>Request information about processors/partners used for your engagement.</li>
-        <li>Contact: <a href="mailto:help@rentback.app">help@rentback.app</a></li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Cookies &amp; similar tech</h2>
-      <p>We use cookies to remember preferences, secure sessions, and understand usage.</p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Children</h2>
-      <p>The Service is not directed to children under 13.</p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Changes</h2>
-      <p>We may update this Policy and will post the new version with an updated date.</p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>Contact</h2>
-      <p>Email: <a href="mailto:help@rentback.app">help@rentback.app</a></p>
-    </>
-  );
-}
-
-function Urdu() {
-  return (
-    <>
-      <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>پرائیویسی پالیسی</h1>
-      <p style={{ opacity: 0.8 }}>آخری تازہ کاری: {new Date().toLocaleDateString("en-PK")}</p>
-
-      <p>
-        RentBack کرایہ داروں کو سہولت سے ادائیگی اور انعامات دیتا ہے اور مالکان کو وصولیوں پر بہتر
-        نظر فراہم کرتا ہے۔ یہ پالیسی بتاتی ہے کہ ہم آپ کی معلومات کیسے جمع، استعمال اور محفوظ کرتے ہیں۔
-      </p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>ہم کون ہیں اور رابطہ</h2>
-      <p>
-        ڈیٹا کنٹرولر: <b>RentBack</b> (پاکستان). رابطہ:{" "}
-        <a href="mailto:help@rentback.app">help@rentback.app</a>
-      </p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>دائرہ کار</h2>
-      <p>
-        یہ پالیسی ہماری ویب سائٹ/ایپ کے استعمال، ویٹ لسٹ میں شامل ہونے، ڈیمو فیچرز استعمال کرنے،
-        یا لائسنس یافتہ پارٹنرز کے ساتھ پائلٹ/سینڈ باکس پروگراموں میں شرکت پر لاگو ہوتی ہے۔
-        ریگولیٹڈ سروسز (جیسے ادائیگیاں، KYC/AML) کے لیے پارٹنرز کی پرائیویسی شرائط بھی لاگو ہوں گی۔
-      </p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>ہم کون سی معلومات لیتے ہیں</h2>
-      <ul>
-        <li><b>اکاؤنٹ و پروفائل:</b> نام، ای میل، فون، ترجیحی زبان، KYC اسٹیٹس (شروع نہیں/جاری/تصدیق شدہ)۔</li>
-        <li><b>ادائیگیاں اور انعامات (ڈیمو/پائلٹ):</b> رقم، مالک/پراپرٹی کے لیبل، وقت، ریفرنس، طریقہ اور اسٹیٹس، ریڈیمپشن انتخاب۔</li>
-        <li><b>KYC/AML (پارٹنر):</b> شناختی دستاویزات اور جانچ لائسنس یافتہ پارٹنرز کرتے ہیں؛ RentBack کو عمومی اسٹیٹس/میٹاڈیٹا ملتا ہے۔</li>
-        <li><b>سپورٹ و رابطہ:</b> آپ کے پیغامات اور متعلقہ میٹاڈیٹا۔</li>
-        <li><b>ٹیکنیکل و اینالیٹکس:</b> ڈیوائس/براؤزر معلومات، IP سے اخذ کردہ لوکیشن، ایونٹ لاگز، UTM/ریفریل، کوکیز وغیرہ۔</li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>استعمال کے مقاصد</h2>
-      <ul>
-        <li>سروس مہیا کرنا اور بہتر بنانا۔</li>
-        <li>سیکیورٹی، فراڈ سے بچاؤ اور مدد/ٹرَبل شوٹنگ۔</li>
-        <li>قانونی/ریگولیٹری تقاضوں (مثلاً SBP/پارٹنرز) کی پاسداری۔</li>
-        <li>پروڈکٹ اپ ڈیٹس اور سروس نوٹس دینا۔</li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>قانونی بنیادیں</h2>
-      <ul>
-        <li><b>معاہدہ جاتی ضرورت</b> (درخواست کردہ فیچرز فراہم کرنے کے لیے)۔</li>
-        <li><b>جائز مفاد</b> (بہتری، سیکیورٹی، فراڈ سے بچاؤ)۔</li>
-        <li><b>رضامندی</b> (جہاں ضروری ہو، مثلاً اختیاری اینالیٹکس/مارکیٹنگ)۔</li>
-        <li><b>قانونی تعمیل</b> (مثلاً مالی جرائم کی روک تھام پارٹنرز کے ذریعے)۔</li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>اشتراک و انکشاف</h2>
-      <ul>
-        <li><b>سروس پرووائیڈرز:</b> ہوسٹنگ، اسٹوریج، مانیٹرنگ، اینالیٹکس، سپورٹ (رازداری معاہدوں کے تحت)۔</li>
-        <li><b>لائسنس یافتہ پارٹنرز:</b> ادائیگیاں اور KYC/AML؛ کم سے کم ڈیٹا شیئر اور زیادہ تر اسٹیٹس/میٹاڈیٹا۔</li>
-        <li><b>اتھارٹیز:</b> قانونی تقاضوں کے مطابق۔</li>
-        <li><b>بزنس ٹرانسفر:</b> انضمام/خریداری/اثاثہ فروخت کی صورت میں۔</li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>بین الاقوامی منتقلی</h2>
-      <p>ڈیٹا پاکستان سے باہر بھی پروسیس/محفوظ ہو سکتا ہے؛ مناسب حفاظتی اقدامات اپناتے ہیں۔</p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>سیکیورٹی</h2>
-      <ul>
-        <li>ٹرانزٹ میں انکرپشن؛ مضبوط کلاؤڈ انفراسٹرکچر۔</li>
-        <li>کم سے کم رسائی اصول؛ ایڈمنسٹریٹو لاگنگ۔</li>
-        <li>کارڈ کا مکمل PAN RentBack پر محفوظ نہیں؛ لائسنس یافتہ پروسیسرز کے ذریعے ٹوکنائزیشن۔</li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>محفوظگی کی مدت</h2>
-      <p>قانونی تقاضوں/جائز مقاصد تک ڈیٹا محفوظ؛ ڈیمو ڈیٹا حسبِ تقاضا حذف کیا جا سکتا ہے (قانونی حدود کے ساتھ)۔</p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>آپ کے حقوق</h2>
-      <ul>
-        <li>رسائی، درستگی یا حذف کی درخواست (قانونی حدود کے ساتھ)۔</li>
-        <li>غیر ضروری ای میلز/اینالیٹکس سے انکار۔</li>
-        <li>مروجہ پروسیسرز/پارٹنرز کی معلومات کی درخواست۔</li>
-        <li>رابطہ: <a href="mailto:help@rentback.app">help@rentback.app</a></li>
-      </ul>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>کوکیز</h2>
-      <p>ترجیحات، سیشن سیکیورٹی اور استعمال سمجھنے کے لیے کوکیز/مشابہ ٹیکنالوجی استعمال ہو سکتی ہے۔</p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>بچوں کے لیے نہیں</h2>
-      <p>یہ سروس 13 سال سے کم عمر بچوں کے لیے متعین نہیں۔</p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>تبدیلیاں</h2>
-      <p>ہم اس پالیسی کو وقتاً فوقتاً اپ ڈیٹ کر سکتے ہیں اور نئی تاریخ کے ساتھ شائع کریں گے۔</p>
-
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>رابطہ</h2>
-      <p>ای میل: <a href="mailto:help@rentback.app">help@rentback.app</a></p>
-    </>
-  );
-}
+type PageProps = {
+  searchParams?: { [key: string]: string | string[] | undefined };
+};
