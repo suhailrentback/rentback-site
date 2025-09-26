@@ -1,4 +1,5 @@
 // /app/app/layout.tsx
+import BrandLogo from "@/components/BrandLogo";
 import { getUser } from "@/lib/session";
 import { setActiveRoleAction, switchLanguageAction } from "./actions";
 
@@ -19,6 +20,11 @@ export default async function AppLayout({
             <span>🏠</span> RentBack
           </div>
 
+// inside header (left side)
+<div className="flex items-center gap-2 font-bold text-emerald-400">
+  <BrandLogo />
+  RentBack
+</div>
           {/* Language toggle */}
           <form action={switchLanguageAction} className="flex items-center gap-2">
             <input
