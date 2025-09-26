@@ -1,6 +1,6 @@
 // /app/app/layout.tsx
 import { getUser } from "@/lib/session";
-import { setActiveRole, switchLang } from "./actions";
+import { setActiveRoleAction, switchLanguageAction } from "./actions";
 
 export const dynamic = "force-dynamic"; // keep interactive
 
@@ -20,7 +20,7 @@ export default async function AppLayout({
           </div>
 
           {/* Language toggle */}
-          <form action={switchLang} className="flex items-center gap-2">
+          <form action={switchLanguageAction} className="flex items-center gap-2">
             <input
               type="hidden"
               name="lang"
@@ -36,7 +36,7 @@ export default async function AppLayout({
 
           {/* Role switcher (only shows roles the user has) */}
           <div className="flex items-center gap-2">
-            <form action={setActiveRole}>
+            <form action={setActiveRoleAction}>
               <select
                 name="role"
                 defaultValue={user?.activeRole}
