@@ -5,14 +5,16 @@ import { redirect } from "next/navigation";
 import { devLogin } from "@/lib/session";
 
 export async function loginAction(formData: FormData) {
-  // Collect roles from checkboxes (can be multiple)
+  // Collect roles from checkboxes
   const roles = formData.getAll("roles").map(String) as Array<
     "tenant" | "landlord" | "admin"
   >;
   const lang = (formData.get("lang") as "en" | "ur") || "en";
 
-  // Default: if none chosen (shouldn’t happen), make them tenant
-  const selected = roles.length ? roles : (["tenant"] as const);
+  // Ensure a mutable array
+  const selected: Array<"tenant" | "landlord" | "admin"> =
+    roles.length ? [...roles] : ["tenant"];
+
   const activeRole = (selected.includes("tenant") ? "tenant" : selected[0]) as
     | "tenant"
     | "landlord"
@@ -20,7 +22,7 @@ export async function loginAction(formData: FormData) {
 
   // Start at KYC Level 0 → onboarding will bump to 1
   await devLogin({
-    roles: selected,
+    roles: selected,      // <-- now mutable, type-safe
     activeRole,
     kycLevel: 0,
     lang,
