@@ -23,7 +23,7 @@ export default function BrandLogo({
       strokeLinejoin="round"
       aria-hidden
     >
-      {/* Old simple house mark */}
+      {/* Old clean house outline */}
       <path d="M3 11.5L12 4l9 7.5" />
       <path d="M5 10v9h14v-9" />
     </svg>
