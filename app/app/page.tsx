@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 /**
  * RentBack — Dark Preview (Single-File, Compile-Safe)
  * Fintech style, EN/UR + RTL, Demo Payments + Rewards, Sandbox controls, Receipts
- * NOTE: No external libs (QR is a lightweight placeholder renderer).
+ * No external libs (QR is a lightweight placeholder).
  */
 
 // ---------- Brand Tokens ----------
@@ -58,10 +58,16 @@ type Redemption = {
 };
 
 type Utm = { source: string; medium: string; campaign: string };
-
 type I18n = { [key: string]: any };
-
 type ToastKind = "default" | "success" | "error" | "info";
+
+type Sandbox = {
+  latencyMs: number;
+  forceCardOutcome: "auto" | "succeed" | "fail";
+  autoMarkSent: boolean;
+  pointsMultiplier: number;
+  showInspector: boolean;
+};
 
 // ---------- Utils ----------
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -105,12 +111,17 @@ const getUA = () => {
 // ---------- Simple QR Placeholder (no external deps) ----------
 const RaastQR: React.FC<{ value: string; size?: number }> = ({ value, size = 112 }) => {
   // Not a real QR encoder; renders a deterministic block pattern from value hash
-  const hash = Array.from(value).reduce((acc, ch) => (acc * 33 + ch.charCodeAt(0)) >>> 0, 5381);
+  const hash = Array.from(value).reduce(
+    (acc, ch) => (acc * 33 + ch.charCodeAt(0)) >>> 0,
+    5381
+  );
   const cells = 21; // 21x21
   const bits: number[] = [];
   let x = hash;
   for (let i = 0; i < cells * cells; i++) {
-    x ^= x << 13; x ^= x >>> 17; x ^= x << 5; // xorshift
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5; // xorshift
     bits.push(x & 1);
   }
   const cell = size / cells;
@@ -121,7 +132,16 @@ const RaastQR: React.FC<{ value: string; size?: number }> = ({ value, size = 112
         if (!b) return null;
         const r = Math.floor(i / cells);
         const c = i % cells;
-        return <rect key={i} x={c * cell} y={r * cell} width={cell} height={cell} fill="#000" />;
+        return (
+          <rect
+            key={i}
+            x={c * cell}
+            y={r * cell}
+            width={cell}
+            height={cell}
+            fill="#000"
+          />
+        );
       })}
     </svg>
   );
@@ -129,14 +149,14 @@ const RaastQR: React.FC<{ value: string; size?: number }> = ({ value, size = 112
 
 // Minimal banner
 const SandboxBanner: React.FC<{ lang: "en" | "ur" }> = ({ lang }) => (
-  <div style={{
-    borderRadius: 12,
-    border: "1px solid rgba(16,185,129,0.2)",
-    background: "rgba(16,185,129,0.12)",
-    padding: 12,
-    fontSize: 12,
-    color: "#a7f3d0",
-  }}>
+  <div
+    className="rounded-xl border p-3 text-xs"
+    style={{
+      borderColor: "rgba(16,185,129,0.2)",
+      background: "rgba(16,185,129,0.12)",
+      color: "#a7f3d0",
+    }}
+  >
     {lang === "en"
       ? "Demo preview — no real payments are processed."
       : "ڈیمو پریویو — کوئی حقیقی ادائیگیاں پروسیس نہیں ہوتیں۔"}
@@ -144,8 +164,21 @@ const SandboxBanner: React.FC<{ lang: "en" | "ur" }> = ({ lang }) => (
 );
 
 // ---------- Logo ----------
-const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({ size = 22, stroke = BRAND.primary }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+const BrandLogo: React.FC<{ size?: number; stroke?: string }> = ({
+  size = 22,
+  stroke = BRAND.primary,
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={stroke}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
     <path d="M3 11.5L12 4l9 7.5" />
     <path d="M5 10v9h14v-9" />
   </svg>
@@ -172,7 +205,13 @@ const copy = {
   en: {
     appName: "RentBack",
     menu: "Menu",
-    nav: { home: "Home", pay: "Pay", rewards: "Rewards", support: "Support", profile: "Profile" },
+    nav: {
+      home: "Home",
+      pay: "Pay",
+      rewards: "Rewards",
+      support: "Support",
+      profile: "Profile",
+    },
     drawer: {
       explore: "Explore",
       status: "Status",
@@ -197,8 +236,16 @@ const copy = {
       kycTitle: "Verify your identity",
       kycSub: "Finish KYC to unlock higher limits and faster payouts.",
       kycCta: "Continue KYC",
-      tenantRows: { pending: "Pending Balance", upcoming: "Upcoming Rent", rewards: "New Rewards" },
-      landlordRows: { listings: "Active Listings", expected: "Expected This Month", followups: "Follow-ups" },
+      tenantRows: {
+        pending: "Pending Balance",
+        upcoming: "Upcoming Rent",
+        rewards: "New Rewards",
+      },
+      landlordRows: {
+        listings: "Active Listings",
+        expected: "Expected This Month",
+        followups: "Follow-ups",
+      },
     },
     pay: {
       title: "Pay rent",
@@ -246,29 +293,234 @@ const copy = {
       points: "Points",
       status: "Status",
     },
-    support: { title: "Support", subtitle: "We usually reply within 24h", email: "Email support", twitter: "Twitter/X" },
-    profile: { title: "Profile", kyc: "KYC", verified: "Verified", inprogress: "In progress", notStarted: "Not started", start: "Start KYC", complete: "Complete KYC", thanks: "KYC complete. Thanks!" },
-    status: { title: "Regulatory Status", subtitle: "SBP Sandbox — preparation & updates", items: ["Preparation complete (materials & partner outreach)", "Draft application ready", "Awaiting sandbox submission window"] },
-    security: { title: "Security & Privacy", subtitle: "How we protect your data", items: ["Encryption in transit; least-privilege access", "Payments via licensed partners; no full PAN stored", "Minimal retention; deletion on request (legal bounds)", "Planned: 2FA, device binding, audit logs", "Report issues: help@rentback.app"] },
-    about: { title: "About RentBack", sub: "Turning rent into rewards", body: "RentBack helps tenants pay rent conveniently while earning rewards, and gives landlords clearer visibility on incoming payments." },
+    support: {
+      title: "Support",
+      subtitle: "We usually reply within 24h",
+      email: "Email support",
+    },
+    profile: {
+      title: "Profile",
+      kyc: "KYC",
+      verified: "Verified",
+      inprogress: "In progress",
+      notStarted: "Not started",
+      start: "Start KYC",
+      complete: "Complete KYC",
+      thanks: "KYC complete. Thanks!",
+      name: "Name",
+      cnic: "CNIC",
+      property: "Property",
+      save: "Save",
+      saved: "Saved",
+    },
+    status: {
+      title: "Regulatory Status",
+      subtitle: "SBP Sandbox — preparation & updates",
+      items: [
+        "Preparation complete (materials & partner outreach)",
+        "Draft application ready",
+        "Awaiting sandbox submission window",
+      ],
+    },
+    security: {
+      title: "Security & Privacy",
+      subtitle: "How we protect your data",
+      items: [
+        "Encryption in transit; least-privilege access",
+        "Payments via licensed partners; no full PAN stored",
+        "Minimal retention; deletion on request (legal bounds)",
+        "Planned: 2FA, device binding, audit logs",
+        "Report issues: help@rentback.app",
+      ],
+    },
+    about: {
+      title: "About RentBack",
+      sub: "Turning rent into rewards",
+      body:
+        "RentBack helps tenants pay rent conveniently while earning rewards, and gives landlords clearer visibility on incoming payments.",
+    },
     founder: { title: "Founder", contact: "Contact" },
     langNames: { en: "English", ur: "اردو" },
+    sandbox: {
+      title: "Sandbox Controls",
+      demoOnly: "Demo only",
+      latency: "Artificial latency (ms)",
+      outcome: "Card/Wallet outcome",
+      auto: "Auto",
+      succeed: "Force Succeed",
+      fail: "Force Fail",
+      multiplier: "Points multiplier",
+      autoSent: "Auto-mark bank transfer as sent",
+      inspector: "Show Event Inspector",
+      clear: "Clear demo data",
+      kycTitle: "KYC Simulation",
+      kycHint: "Toggle demo KYC state",
+      notStarted: "Not started",
+      inProgress: "In progress",
+      verified: "Verified",
+      seedsTitle: "Quick seeds & scenarios",
+      seedsHint: "One-click demo",
+      seedTenant: "Seed Tenant (basic)",
+      seedLandlord: "Seed Landlord (3 units)",
+      scenarioRaast: "Scenario: Raast auto-sent",
+      scenarioDeclineWallet: "Scenario: Card decline → Wallet success",
+      simulateCredit: "Simulate Raast credit detection",
+      seedHistory: "Seed: 6-month history",
+      loggingOff: "Sheet logging disabled",
+      loggingOn: "Sheet logging enabled",
+    },
+    copiedToast: "Copied",
   },
   ur: {
     appName: "RentBack",
     menu: "مینیو",
     nav: { home: "ہوم", pay: "ادائیگی", rewards: "انعامات", support: "مدد", profile: "پروفائل" },
-    drawer: { explore: "ایکسپلور", status: "اسٹیٹس", security: "سیکورٹی اور پرائیویسی", rewards: "انعامات", about: "متعلق", founder: "بانی", complaints: "شکایات", privacy: "پرائیویسی پالیسی", terms: "شرائطِ استعمال", role: "کردار", roleHint: "تجربہ تبدیل کریں", tenant: "کرایہ دار", landlord: "مالک مکان", lang: "زبان" },
-    home: { headlineTenant: "آپ کا کرایہ، منظم", subTenant: "ادائیگیاں ٹریک کریں، تیزی سے ادا کریں، اور انعامات پائیں۔", headlineLandlord: "آپ کی رینٹل ایک نظر میں", subLandlord: "آنے والی ادائیگیاں اور کرایہ داروں کی سرگرمی دیکھیں۔", kycTitle: "شناخت کی تصدیق کریں", kycSub: "زیادہ حدیں اور تیز ادائیگیوں کے لیے KYC مکمل کریں۔", kycCta: "KYC جاری رکھیں", tenantRows: { pending: "بقیہ رقم", upcoming: "آئندہ کرایہ", rewards: "نئے انعامات" }, landlordRows: { listings: "فعال لسٹنگز", expected: "اس ماہ متوقع", followups: "فالو اپس" } },
-    pay: { title: "کرایہ ادا کریں", subtitle: "ڈیمو موڈ — کوئی حقیقی چارج نہیں", amount: "رقم (PKR)", landlord: "مالک / پراپرٹی", method: "طریقہ", create: "ادائیگی بنائیں (ڈیمو)", csv: "CSV ڈاؤن لوڈ", recent: "حالیہ", instructions: "ہدایات", succeeded: "کامیاب", sent: "بھیج دیا", refunded: "ریفنڈ", markSent: "بھیجا گیا نشان لگائیں", receipt: "رسید دیکھیں", refund: "ریفنڈ (ڈیمو)", invalid: "رقم اور مالک/پراپرٹی لکھیں۔", transferTo: "موصول کنندہ", iban: "IBAN", memo: "میمو", collections: "RentBack Collections", ibanValue: "PK00-RENT-0000-0007", demoNote: "ڈیمو رسید — کوئی حقیقی رقم منتقل نہیں ہوئی۔", print: "پرنٹ / PDF محفوظ کریں", close: "بند کریں", status: "اسٹیٹس", copy: "کاپی", copied: "کاپی ہو گیا", raastQR: "راست کیو آر (ڈیمو)" },
-    rewards: { title: "انعامات", subtitle: "پاکستان کے لیے منتخب سہولتیں", redeem: "ریڈیم", choose: "ڈینامینیشن منتخب کریں", confirm: "ریڈیم کی تصدیق", cancel: "منسوخ", recent: "حالیہ ریڈیمپشنز", none: "ابھی تک کوئی ریڈیمپشن نہیں۔", viewReceipt: "ریڈیم رسید", markFulfilled: "فلفلڈ", markCancelled: "منسوخ", receiptTitle: "ریڈیمپشن رسید", points: "پوائنٹس", status: "اسٹیٹس" },
-    support: { title: "مدد", subtitle: "عام طور پر 24 گھنٹوں میں جواب", email: "ای میل سپورٹ", twitter: "ٹوئٹر/X" },
-    profile: { title: "پروفائل", kyc: "KYC", verified: "تصدیق شدہ", inprogress: "جاری", notStarted: "شروع نہیں", start: "KYC شروع کریں", complete: "KYC مکمل کریں", thanks: "KYC مکمل۔ شکریہ!" },
-    status: { title: "ریگولیٹری اسٹیٹس", subtitle: "SBP سینڈ باکس — تیاری اور اپ ڈیٹس", items: ["تیاری مکمل (مواد اور پارٹنر آؤٹ ریچ)", "ڈرافٹ درخواست تیار", "سینڈ باکس جمع کرانے کی ونڈو کا انتظار"] },
-    security: { title: "سیکورٹی اور پرائیویسی", subtitle: "ہم آپ کے ڈیٹا کی حفاظت کیسے کرتے ہیں", items: ["ترسیل کے دوران انکرپشن؛ محدود رسائی", "ادائیگیاں لائسنس یافتہ پارٹنرز کے ذریعے؛ مکمل کارڈ محفوظ نہیں", "کم از کم ریکارڈ رکھنا؛ قانونی حدود میں حذف", "منصوبہ: 2FA، ڈیوائس بائنڈنگ، آڈٹ لاگز", "رابطہ: help@rentback.app"] },
-    about: { title: "RentBack کے بارے میں", sub: "کرائے کو انعامات میں بدلنا", body: "RentBack کرایہ داروں کو سہولت سے ادائیگی اور انعامات دیتا ہے اور مالکان کو آمدنی پر واضح نظر فراہم کرتا ہے۔" },
+    drawer: {
+      explore: "ایکسپلور",
+      status: "اسٹیٹس",
+      security: "سیکورٹی اور پرائیویسی",
+      rewards: "انعامات",
+      about: "متعلق",
+      founder: "بانی",
+      complaints: "شکایات",
+      privacy: "پرائیویسی پالیسی",
+      terms: "شرائطِ استعمال",
+      role: "کردار",
+      roleHint: "تجربہ تبدیل کریں",
+      tenant: "کرایہ دار",
+      landlord: "مالک مکان",
+      lang: "زبان",
+    },
+    home: {
+      headlineTenant: "آپ کا کرایہ، منظم",
+      subTenant: "ادائیگیاں ٹریک کریں، تیزی سے ادا کریں، اور انعامات پائیں۔",
+      headlineLandlord: "آپ کی رینٹل ایک نظر میں",
+      subLandlord: "آنے والی ادائیگیاں اور کرایہ داروں کی سرگرمی دیکھیں۔",
+      kycTitle: "شناخت کی تصدیق کریں",
+      kycSub: "زیادہ حدیں اور تیز ادائیگیوں کے لیے KYC مکمل کریں۔",
+      kycCta: "KYC جاری رکھیں",
+      tenantRows: { pending: "بقیہ رقم", upcoming: "آئندہ کرایہ", rewards: "نئے انعامات" },
+      landlordRows: { listings: "فعال لسٹنگز", expected: "اس ماہ متوقع", followups: "فالو اپس" },
+    },
+    pay: {
+      title: "کرایہ ادا کریں",
+      subtitle: "ڈیمو موڈ — کوئی حقیقی چارج نہیں",
+      amount: "رقم (PKR)",
+      landlord: "مالک / پراپرٹی",
+      method: "طریقہ",
+      create: "ادائیگی بنائیں (ڈیمو)",
+      csv: "CSV ڈاؤن لوڈ",
+      recent: "حالیہ",
+      instructions: "ہدایات",
+      succeeded: "کامیاب",
+      sent: "بھیج دیا",
+      refunded: "ریفنڈ",
+      markSent: "بھیجا گیا نشان لگائیں",
+      receipt: "رسید دیکھیں",
+      refund: "ریفنڈ (ڈیمو)",
+      invalid: "رقم اور مالک/پراپرٹی لکھیں۔",
+      transferTo: "موصول کنندہ",
+      iban: "IBAN",
+      memo: "میمو",
+      collections: "RentBack Collections",
+      ibanValue: "PK00-RENT-0000-0007",
+      demoNote: "ڈیمو رسید — کوئی حقیقی رقم منتقل نہیں ہوئی۔",
+      print: "پرنٹ / PDF محفوظ کریں",
+      close: "بند کریں",
+      status: "اسٹیٹس",
+      copy: "کاپی",
+      copied: "کاپی ہو گیا",
+      raastQR: "راست کیو آر (ڈیمو)",
+    },
+    rewards: {
+      title: "انعامات",
+      subtitle: "پاکستان کے لیے منتخب سہولتیں",
+      redeem: "ریڈیم",
+      choose: "ڈینامینیشن منتخب کریں",
+      confirm: "ریڈیم کی تصدیق",
+      cancel: "منسوخ",
+      recent: "حالیہ ریڈیمپشنز",
+      none: "ابھی تک کوئی ریڈیمپشن نہیں۔",
+      viewReceipt: "ریڈیم رسید",
+      markFulfilled: "فلفلڈ",
+      markCancelled: "منسوخ",
+      receiptTitle: "ریڈیمپشن رسید",
+      points: "پوائنٹس",
+      status: "اسٹیٹس",
+    },
+    support: { title: "مدد", subtitle: "عام طور پر 24 گھنٹوں میں جواب", email: "ای میل سپورٹ" },
+    profile: {
+      title: "پروفائل",
+      kyc: "KYC",
+      verified: "تصدیق شدہ",
+      inprogress: "جاری",
+      notStarted: "شروع نہیں",
+      start: "KYC شروع کریں",
+      complete: "KYC مکمل کریں",
+      thanks: "KYC مکمل۔ شکریہ!",
+      name: "نام",
+      cnic: "شناختی کارڈ (CNIC)",
+      property: "پراپرٹی",
+      save: "محفوظ کریں",
+      saved: "محفوظ ہو گیا",
+    },
+    status: {
+      title: "ریگولیٹری اسٹیٹس",
+      subtitle: "SBP سینڈ باکس — تیاری اور اپ ڈیٹس",
+      items: [
+        "تیاری مکمل (مواد اور پارٹنر آؤٹ ریچ)",
+        "ڈرافٹ درخواست تیار",
+        "سینڈ باکس جمع کرانے کی ونڈو کا انتظار",
+      ],
+    },
+    security: {
+      title: "سیکورٹی اور پرائیویسی",
+      subtitle: "ہم آپ کے ڈیٹا کی حفاظت کیسے کرتے ہیں",
+      items: [
+        "ترسیل کے دوران انکرپشن؛ محدود رسائی",
+        "ادائیگیاں لائسنس یافتہ پارٹنرز کے ذریعے؛ مکمل کارڈ محفوظ نہیں",
+        "کم از کم ریکارڈ رکھنا؛ قانونی حدود میں حذف",
+        "منصوبہ: 2FA، ڈیوائس بائنڈنگ، آڈٹ لاگز",
+        "رابطہ: help@rentback.app",
+      ],
+    },
+    about: {
+      title: "RentBack کے بارے میں",
+      sub: "کرائے کو انعامات میں بدلنا",
+      body:
+        "RentBack کرایہ داروں کو سہولت سے ادائیگی اور انعامات دیتا ہے اور مالکان کو آمدنی پر واضح نظر فراہم کرتا ہے۔",
+    },
     founder: { title: "بانی", contact: "رابطہ" },
     langNames: { en: "English", ur: "اردو" },
+    sandbox: {
+      title: "سینڈ باکس کنٹرولز",
+      demoOnly: "صرف ڈیمو",
+      latency: "مصنوعی تاخیر (ms)",
+      outcome: "کارڈ/والیٹ نتیجہ",
+      auto: "خودکار",
+      succeed: "زبردستی کامیاب",
+      fail: "زبردستی ناکام",
+      multiplier: "پوائنٹس ملٹی پلائر",
+      autoSent: "بینک ٹرانسفر خود بخود Sent کریں",
+      inspector: "ایونٹ انسپکٹر دکھائیں",
+      clear: "ڈیمو ڈیٹا صاف کریں",
+      kycTitle: "KYC تخروپن",
+      kycHint: "ڈیمو KYC حالت تبدیل کریں",
+      notStarted: "شروع نہیں",
+      inProgress: "جاری",
+      verified: "تصدیق شدہ",
+      seedsTitle: "فوری سیڈز اور منظرنامے",
+      seedsHint: "ون کلک ڈیمو",
+      seedTenant: "سیڈ: کرایہ دار",
+      seedLandlord: "سیڈ: مالک (3 یونٹس)",
+      scenarioRaast: "منظرنامہ: راست آٹو Sent",
+      scenarioDeclineWallet: "منظرنامہ: کارڈ ناکام → والیٹ کامیاب",
+      simulateCredit: "راست کریڈٹ ڈیٹیکشن",
+      seedHistory: "سیڈ: 6 ماہ ہسٹری",
+      loggingOff: "شیٹ لاگنگ بند",
+      loggingOn: "شیٹ لاگنگ آن",
+    },
+    copiedToast: "کاپی ہو گیا",
   },
 } as const;
 
@@ -279,7 +531,12 @@ async function postToSheet(payload: Record<string, any>) {
     if (!endpoint) return;
     const key = (window as any).RB_PAYMENTS_SECRET as string | undefined;
     const body = key ? { ...payload, key } : payload;
-    await fetch(endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    await fetch(endpoint, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
   } catch {}
 }
 
@@ -288,10 +545,19 @@ function cn(...classes: Array<string | undefined | false>) {
   return classes.filter(Boolean).join(" ");
 }
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "default" | "outline" | "ghost" | "destructive"; size?: "sm" | "md" | "lg" };
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "default" | "outline" | "ghost" | "destructive";
+  size?: "sm" | "md" | "lg";
+};
 
-function Button({ variant = "default", size = "md", className, ...props }: ButtonProps) {
-  const base = "inline-flex items-center justify-center rounded-lg font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed";
+function Button({
+  variant = "default",
+  size = "md",
+  className,
+  ...props
+}: ButtonProps) {
+  const base =
+    "inline-flex items-center justify-center rounded-lg font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed";
   const variants = {
     default: "bg-emerald-600 text-white hover:bg-emerald-700",
     outline: "border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50",
@@ -299,18 +565,38 @@ function Button({ variant = "default", size = "md", className, ...props }: Butto
     destructive: "bg-red-600 text-white hover:bg-red-700",
   } as const;
   const sizes = { sm: "px-2 py-1 text-sm", md: "px-3 py-2", lg: "px-4 py-3 text-base" } as const;
-  return <button type="button" className={cn(base, variants[variant], sizes[size], className)} {...props} />;
+  return (
+    <button
+      type="button"
+      className={cn(base, variants[variant], sizes[size], className)}
+      {...props}
+    />
+  );
 }
 
-const SectionTitle: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
+const SectionTitle: React.FC<{ title: string; subtitle?: string }> = ({
+  title,
+  subtitle,
+}) => (
   <div className="mb-3">
     <div className="font-bold text-[15px] leading-tight">{title}</div>
     {subtitle ? <div className="text-[13px] opacity-75 mt-1">{subtitle}</div> : null}
   </div>
 );
 
-const Row: React.FC<{ children: React.ReactNode; right?: React.ReactNode; onClick?: () => void }> = ({ children, right, onClick }) => (
-  <button type="button" onClick={onClick} className={cn("w-full text-left flex items-center justify-between px-3 py-3 rounded-xl border bg-white/5 border-white/10 shadow-sm", onClick ? "cursor-pointer hover:shadow" : "cursor-default") }>
+const Row: React.FC<{
+  children: React.ReactNode;
+  right?: React.ReactNode;
+  onClick?: () => void;
+}> = ({ children, right, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      "w-full text-left flex items-center justify-between px-3 py-3 rounded-xl border bg-white/5 border-white/10 shadow-sm",
+      onClick ? "cursor-pointer hover:shadow" : "cursor-default"
+    )}
+  >
     <span>{children}</span>
     {right ? <span className="text-[12px] opacity-70">{right}</span> : null}
   </button>
@@ -328,8 +614,13 @@ const CardVisual: React.FC = () => (
         <span className="text-[12px] text-slate-800/90">VIRTUAL • Debit</span>
       </div>
       <div className="mt-auto font-mono tracking-wider">
-        <div className="text-[18px] font-semibold text-slate-800">**** **** **** 0007</div>
-        <div className="flex gap-5 mt-1 text-[12px] text-slate-800"><span>Exp 12/27</span><span>PKR</span></div>
+        <div className="text-[18px] font-semibold text-slate-800">
+          **** **** **** 0007
+        </div>
+        <div className="flex gap-5 mt-1 text-[12px] text-slate-800">
+          <span>Exp 12/27</span>
+          <span>PKR</span>
+        </div>
       </div>
     </div>
     <style>{`@keyframes rb-grad{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}} .rb-animated-bg{background:linear-gradient(120deg,#059669,#14b8a6,#34d399);background-size:200% 200%;animation:rb-grad 12s ease infinite}`}</style>
@@ -347,28 +638,57 @@ function useToasts() {
   const ToastStack = () => (
     <div className="fixed z-[60] top-3 right-3 space-y-2">
       {toasts.map((t) => (
-        <div key={t.id} className={cn("px-3 py-2 rounded-lg shadow border text-sm", t.kind === "success" ? "bg-emerald-600 text-white" : t.kind === "error" ? "bg-red-600 text-white" : t.kind === "info" ? "bg-slate-800 text-white" : "bg-white/10 border-white/20 text-white")}>{t.msg}</div>
+        <div
+          key={t.id}
+          className={cn(
+            "px-3 py-2 rounded-lg shadow border text-sm",
+            t.kind === "success"
+              ? "bg-emerald-600 text-white"
+              : t.kind === "error"
+              ? "bg-red-600 text-white"
+              : t.kind === "info"
+              ? "bg-slate-800 text-white"
+              : "bg-white/10 border-white/20 text-white"
+          )}
+        >
+          {t.msg}
+        </div>
       ))}
     </div>
   );
   return { notify, ToastStack };
 }
 
-// ---------- Event Inspector ----------
+// ---------- Event Bus & Inspector ----------
 function useEventBus() {
   const [events, setEvents] = useState<Array<{ ts: number; type: string; payload: any }>>([]);
-  const emit = (type: string, payload: any) => setEvents((prev) => [{ ts: Date.now(), type, payload }, ...prev].slice(0, 200));
+  const emit = (type: string, payload: any) =>
+    setEvents((prev) => [{ ts: Date.now(), type, payload }, ...prev].slice(0, 200));
   const clear = () => setEvents([]);
   return { events, emit, clear };
 }
 
-const EventInspector: React.FC<{ events: Array<{ ts: number; type: string; payload: any }>; onClear: () => void; open: boolean; setOpen: (b: boolean) => void; }> = ({ events, onClear, open, setOpen }) => (
-  <div className={cn("fixed z-[45] top-20 right-3 w-[360px] max-w-[92vw] rounded-xl border bg-white/5 border-white/10 shadow-2xl overflow-hidden transition-all", open ? "opacity-100" : "opacity-90") }>
+const EventInspector: React.FC<{
+  events: Array<{ ts: number; type: string; payload: any }>;
+  onClear: () => void;
+  open: boolean;
+  setOpen: (b: boolean) => void;
+}> = ({ events, onClear, open, setOpen }) => (
+  <div
+    className={cn(
+      "fixed z-[45] top-20 right-3 w-[360px] max-w-[92vw] rounded-xl border bg-white/5 border-white/10 shadow-2xl overflow-hidden transition-all",
+      open ? "opacity-100" : "opacity-90"
+    )}
+  >
     <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
       <div className="font-semibold">Event Inspector</div>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onClear}>Clear</Button>
-        <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Hide</Button>
+        <Button variant="outline" size="sm" onClick={onClear}>
+          Clear
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+          Hide
+        </Button>
       </div>
     </div>
     <div className="max-h-[50vh] overflow-auto text-xs">
@@ -378,8 +698,15 @@ const EventInspector: React.FC<{ events: Array<{ ts: number; type: string; paylo
         <ul className="divide-y divide-white/10">
           {events.map((e, i) => (
             <li key={i} className="p-3">
-              <div className="flex items-center justify-between"><b>{e.type}</b><span className="opacity-70">{new Date(e.ts).toLocaleTimeString()}</span></div>
-              <pre className="mt-1 whitespace-pre-wrap break-words opacity-90">{JSON.stringify(e.payload, null, 2)}</pre>
+              <div className="flex items-center justify-between">
+                <b>{e.type}</b>
+                <span className="opacity-70">
+                  {new Date(e.ts).toLocaleTimeString()}
+                </span>
+              </div>
+              <pre className="mt-1 whitespace-pre-wrap break-words opacity-90">
+                {JSON.stringify(e.payload, null, 2)}
+              </pre>
             </li>
           ))}
         </ul>
@@ -389,100 +716,291 @@ const EventInspector: React.FC<{ events: Array<{ ts: number; type: string; paylo
 );
 
 // ---------- Sandbox Panel ----------
- type Sandbox = { latencyMs: number; forceCardOutcome: "auto" | "succeed" | "fail"; autoMarkSent: boolean; pointsMultiplier: number; showInspector: boolean; };
-
-const SandboxPanel: React.FC<{ t: I18n; sandbox: Sandbox; setSandbox: React.Dispatch<React.SetStateAction<Sandbox>>; onClearData: () => void; onSeedTenant: () => void; onSeedLandlord: () => void; onScenarioRaastAuto: () => void; onScenarioDeclineThenWallet: () => void; onSimulateRaastCredit?: () => void; onKycNone: () => void; onKycInProgress: () => void; onKycVerified: () => void; onSeedHistory?: () => void; }> = ({ t, sandbox, setSandbox, onClearData, onSeedTenant, onSeedLandlord, onScenarioRaastAuto, onScenarioDeclineThenWallet, onSimulateRaastCredit, onKycNone, onKycInProgress, onKycVerified, onSeedHistory }) => (
+const SandboxPanel: React.FC<{
+  t: I18n;
+  sandbox: Sandbox;
+  setSandbox: React.Dispatch<React.SetStateAction<Sandbox>>;
+  onClearData: () => void;
+  onSeedTenant: () => void;
+  onSeedLandlord: () => void;
+  onScenarioRaastAuto: () => void;
+  onScenarioDeclineThenWallet: () => void;
+  onSimulateRaastCredit: () => void;
+  onKycNone: () => void;
+  onKycInProgress: () => void;
+  onKycVerified: () => void;
+  onSeedHistory: () => void;
+  loggingEnabled: boolean;
+}> = ({
+  t,
+  sandbox,
+  setSandbox,
+  onClearData,
+  onSeedTenant,
+  onSeedLandlord,
+  onScenarioRaastAuto,
+  onScenarioDeclineThenWallet,
+  onSimulateRaastCredit,
+  onKycNone,
+  onKycInProgress,
+  onKycVerified,
+  onSeedHistory,
+  loggingEnabled,
+}) => (
   <div className="rounded-2xl border bg-white/5 border-white/10 p-3">
-    <div className="flex items-center justify-between mb-2"><div className="font-semibold">Sandbox Controls</div><div className="text-[11px] opacity-70">Demo only</div></div>
+    <div className="flex items-center justify-between mb-2">
+      <div className="font-semibold">{t.sandbox.title}</div>
+      <div className="text-[11px] opacity-70">
+        {t.sandbox.demoOnly} ·{" "}
+        {loggingEnabled ? t.sandbox.loggingOn : t.sandbox.loggingOff}
+      </div>
+    </div>
+
     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
       <div>
-        <div className="text-xs opacity-70 mb-1">Artificial latency (ms)</div>
-        <input type="range" min={0} max={2000} step={100} value={sandbox.latencyMs} onChange={(e) => setSandbox((s) => ({ ...s, latencyMs: Number(e.target.value) }))} className="w-full" />
+        <div className="text-xs opacity-70 mb-1">{t.sandbox.latency}</div>
+        <input
+          type="range"
+          min={0}
+          max={2000}
+          step={100}
+          value={sandbox.latencyMs}
+          onChange={(e) =>
+            setSandbox((s) => ({ ...s, latencyMs: Number(e.target.value) }))
+          }
+          className="w-full"
+        />
         <div className="text-xs mt-1">{sandbox.latencyMs}ms</div>
       </div>
+
       <div>
-        <div className="text-xs opacity-70 mb-1">Card/Wallet outcome</div>
-        <select className="px-2 py-2 rounded-md border bg-transparent border-white/10" value={sandbox.forceCardOutcome} onChange={(e) => setSandbox((s) => ({ ...s, forceCardOutcome: e.target.value as Sandbox["forceCardOutcome"] }))}>
-          <option value="auto">Auto</option>
-          <option value="succeed">Force Succeed</option>
-          <option value="fail">Force Fail</option>
+        <div className="text-xs opacity-70 mb-1">{t.sandbox.outcome}</div>
+        <select
+          className="px-2 py-2 rounded-md border bg-transparent border-white/10"
+          value={sandbox.forceCardOutcome}
+          onChange={(e) =>
+            setSandbox((s) => ({
+              ...s,
+              forceCardOutcome: e.target.value as Sandbox["forceCardOutcome"],
+            }))
+          }
+        >
+          <option value="auto">{t.sandbox.auto}</option>
+          <option value="succeed">{t.sandbox.succeed}</option>
+          <option value="fail">{t.sandbox.fail}</option>
         </select>
       </div>
+
       <div>
-        <div className="text-xs opacity-70 mb-1">Points multiplier</div>
-        <select className="px-2 py-2 rounded-md border bg-transparent border-white/10" value={sandbox.pointsMultiplier} onChange={(e) => setSandbox((s) => ({ ...s, pointsMultiplier: Number(e.target.value) }))}>
+        <div className="text-xs opacity-70 mb-1">{t.sandbox.multiplier}</div>
+        <select
+          className="px-2 py-2 rounded-md border bg-transparent border-white/10"
+          value={sandbox.pointsMultiplier}
+          onChange={(e) =>
+            setSandbox((s) => ({ ...s, pointsMultiplier: Number(e.target.value) }))
+          }
+        >
           <option value={1}>1×</option>
           <option value={1.5}>1.5×</option>
           <option value={2}>2×</option>
         </select>
       </div>
-      <div className="flex items-center gap-2"><input id="autoSent" type="checkbox" checked={sandbox.autoMarkSent} onChange={(e) => setSandbox((s) => ({ ...s, autoMarkSent: e.target.checked }))} /><label htmlFor="autoSent" className="text-sm">Auto-mark bank transfer as sent</label></div>
-      <div className="flex items-center gap-2"><input id="inspector" type="checkbox" checked={sandbox.showInspector} onChange={(e) => setSandbox((s) => ({ ...s, showInspector: e.target.checked }))} /><label htmlFor="inspector" className="text-sm">Show Event Inspector</label></div>
-      <div className="flex items-center gap-2"><Button variant="destructive" onClick={onClearData}>Clear demo data</Button></div>
+
+      <div className="flex items-center gap-2">
+        <input
+          id="autoSent"
+          type="checkbox"
+          checked={sandbox.autoMarkSent}
+          onChange={(e) =>
+            setSandbox((s) => ({ ...s, autoMarkSent: e.target.checked }))
+          }
+        />
+        <label htmlFor="autoSent" className="text-sm">
+          {t.sandbox.autoSent}
+        </label>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          id="inspector"
+          type="checkbox"
+          checked={sandbox.showInspector}
+          onChange={(e) =>
+            setSandbox((s) => ({ ...s, showInspector: e.target.checked }))
+          }
+        />
+        <label htmlFor="inspector" className="text-sm">
+          {t.sandbox.inspector}
+        </label>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button variant="destructive" onClick={onClearData}>
+          {t.sandbox.clear}
+        </Button>
+      </div>
     </div>
+
     <div className="mt-3">
-      <div className="flex items-center justify-between mb-2"><div className="font-semibold">KYC Simulation</div><div className="text-[11px] opacity-70">Toggle demo KYC state</div></div>
-      <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={onKycNone}>Not started</Button><Button variant="outline" onClick={onKycInProgress}>In progress</Button><Button onClick={onKycVerified}>Verified</Button></div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="font-semibold">{t.sandbox.kycTitle}</div>
+        <div className="text-[11px] opacity-70">{t.sandbox.kycHint}</div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={onKycNone}>
+          {t.sandbox.notStarted}
+        </Button>
+        <Button variant="outline" onClick={onKycInProgress}>
+          {t.sandbox.inProgress}
+        </Button>
+        <Button onClick={onKycVerified}>{t.sandbox.verified}</Button>
+      </div>
     </div>
+
     <div className="mt-3">
-      <div className="flex items-center justify-between mb-2"><div className="font-semibold">Quick seeds & scenarios</div><div className="text-[11px] opacity-70">One-click demo</div></div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="font-semibold">{t.sandbox.seedsTitle}</div>
+        <div className="text-[11px] opacity-70">{t.sandbox.seedsHint}</div>
+      </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        <Button variant="outline" onClick={onSeedTenant}>Seed Tenant (basic)</Button>
-        <Button variant="outline" onClick={onSeedLandlord}>Seed Landlord (3 units)</Button>
-        <Button variant="outline" onClick={onScenarioRaastAuto}>Scenario: Raast auto-sent</Button>
-        <Button variant="outline" onClick={onScenarioDeclineThenWallet}>Scenario: Card decline → Wallet success</Button>
-        {onSimulateRaastCredit ? <Button variant="outline" onClick={onSimulateRaastCredit}>Simulate Raast credit detection</Button> : null}
-        {onSeedHistory ? <Button variant="outline" onClick={onSeedHistory}>Seed: 6-month history</Button> : null}
+        <Button variant="outline" onClick={onSeedTenant}>
+          {t.sandbox.seedTenant}
+        </Button>
+        <Button variant="outline" onClick={onSeedLandlord}>
+          {t.sandbox.seedLandlord}
+        </Button>
+        <Button variant="outline" onClick={onScenarioRaastAuto}>
+          {t.sandbox.scenarioRaast}
+        </Button>
+        <Button variant="outline" onClick={onScenarioDeclineThenWallet}>
+          {t.sandbox.scenarioDeclineWallet}
+        </Button>
+        <Button variant="outline" onClick={onSimulateRaastCredit}>
+          {t.sandbox.simulateCredit}
+        </Button>
+        <Button variant="outline" onClick={onSeedHistory}>
+          {t.sandbox.seedHistory}
+        </Button>
       </div>
     </div>
   </div>
 );
 
 // ---------- Modals ----------
-const Backdrop: React.FC<{ onClose: () => void; children: React.ReactNode }> = ({ onClose, children }) => {
+const Backdrop: React.FC<{ onClose: () => void; children: React.ReactNode }> = ({
+  onClose,
+  children,
+}) => {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const prevFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key === "Tab" && panelRef.current) {
-        const focusables = panelRef.current.querySelectorAll<HTMLElement>('a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])');
+        const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        );
         if (focusables.length === 0) return;
         const first = focusables[0];
         const last = focusables[focusables.length - 1];
         const active = document.activeElement as HTMLElement | null;
-        if (e.shiftKey && active === first) { last.focus(); e.preventDefault(); }
-        else if (!e.shiftKey && active === last) { first.focus(); e.preventDefault(); }
+        if (e.shiftKey && active === first) {
+          last.focus();
+          e.preventDefault();
+        } else if (!e.shiftKey && active === last) {
+          first.focus();
+          e.preventDefault();
+        }
       }
     };
     window.addEventListener("keydown", onKey);
     prevFocus.current = document.activeElement as HTMLElement | null;
-    setTimeout(() => { const el = panelRef.current?.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'); el?.focus(); }, 0);
-    return () => { window.removeEventListener("keydown", onKey); prevFocus.current?.focus?.(); };
+    setTimeout(() => {
+      const el = panelRef.current?.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      el?.focus();
+    }, 0);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      prevFocus.current?.focus?.();
+    };
   }, [onClose]);
   return (
-    <div role="dialog" aria-modal="true" onClick={onClose} className="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
-      <div ref={panelRef} onClick={(e) => e.stopPropagation()} className="w-full max-w-[720px] rounded-2xl border border-white/10 bg-[#0b0b0b] text-white shadow-2xl">{children}</div>
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4"
+    >
+      <div
+        ref={panelRef}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[720px] rounded-2xl border border-white/10 bg-[#0b0b0b] text-white shadow-2xl"
+      >
+        {children}
+      </div>
     </div>
   );
 };
 
-const RowKV: React.FC<{ label: React.ReactNode; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="flex items-center justify-between"><div className="opacity-70">{label}</div><div className="font-medium">{value}</div></div>
+const RowKV: React.FC<{ label: React.ReactNode; value: React.ReactNode }> = ({
+  label,
+  value,
+}) => (
+  <div className="flex items-center justify-between">
+    <div className="opacity-70">{label}</div>
+    <div className="font-medium">{value}</div>
+  </div>
 );
 
-const PaymentReceiptModal: React.FC<{ t: I18n; payment: Payment; onClose: () => void; lang?: 'en' | 'ur' }> = ({ t, payment, onClose, lang = 'en' }) => {
-  const date = new Date(payment.ts).toLocaleString('en-PK');
+const PaymentReceiptModal: React.FC<{
+  t: I18n;
+  payment: Payment;
+  onClose: () => void;
+  lang?: "en" | "ur";
+}> = ({ t, payment, onClose, lang = "en" }) => {
+  const date = new Date(payment.ts).toLocaleString("en-PK");
   const openPrintWindow = () => {
-    const profileName = (() => { try { return localStorage.getItem('rb-profile-name') || ''; } catch { return ''; } })();
-    const profileCnic = (() => { try { return localStorage.getItem('rb-profile-cnic') || ''; } catch { return ''; } })();
-    const profileProperty = (() => { try { return localStorage.getItem('rb-profile-property') || ''; } catch { return ''; } })();
-    const html = `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><title>Receipt</title><style>body{font-family:Arial, Helvetica, sans-serif;padding:24px;color:#0b0b0b} .card{max-width:720px;margin:0 auto;border-radius:12px;padding:18px;border:1px solid rgba(0,0,0,0.08)} .watermark{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:64px;color:rgba(0,0,0,0.04);pointer-events:none}</style></head><body><div class="watermark">DEMO</div><div class="card"><h2>${t.pay.receipt}</h2><p><strong>Ref:</strong> ${payment.ref}</p><p><strong>Date:</strong> ${date}</p>${profileName ? `<p><strong>Name:</strong> ${profileName}</p>` : ''}${profileCnic ? `<p><strong>CNIC:</strong> ${profileCnic}</p>` : ''}${profileProperty ? `<p><strong>Property:</strong> ${profileProperty}</p>` : ''}<p><strong>${t.pay.landlord}:</strong> ${payment.landlord}</p><p><strong>${t.pay.method}:</strong> ${payment.method}</p><p><strong>Amount:</strong> ${formatPKR(payment.amount)}</p><p style="opacity:0.8;font-size:12px">${t.pay.demoNote}</p></div></body></html>`;
-    const w = window.open('', '_blank', 'width=800,height=900'); if (!w) return; w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 400);
+    const profileName = (() => {
+      try {
+        return localStorage.getItem("rb-profile-name") || "";
+      } catch {
+        return "";
+      }
+    })();
+    const profileCnic = (() => {
+      try {
+        return localStorage.getItem("rb-profile-cnic") || "";
+      } catch {
+        return "";
+      }
+    })();
+    const profileProperty = (() => {
+      try {
+        return localStorage.getItem("rb-profile-property") || "";
+      } catch {
+        return "";
+      }
+    })();
+    const html = `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><title>Receipt</title><style>body{font-family:Arial, Helvetica, sans-serif;padding:24px;color:#0b0b0b} .card{max-width:720px;margin:0 auto;border-radius:12px;padding:18px;border:1px solid rgba(0,0,0,0.08)} .watermark{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:64px;color:rgba(0,0,0,0.04);pointer-events:none}</style></head><body><div class="watermark">DEMO</div><div class="card"><h2>${t.pay.receipt}</h2><p><strong>Ref:</strong> ${payment.ref}</p><p><strong>Date:</strong> ${date}</p>${profileName ? `<p><strong>Name:</strong> ${profileName}</p>` : ""}${profileCnic ? `<p><strong>CNIC:</strong> ${profileCnic}</p>` : ""}${profileProperty ? `<p><strong>Property:</strong> ${profileProperty}</p>` : ""}<p><strong>${t.pay.landlord}:</strong> ${payment.landlord}</p><p><strong>${t.pay.method}:</strong> ${payment.method}</p><p><strong>Amount:</strong> ${formatPKR(payment.amount)}</p><p style="opacity:0.8;font-size:12px">${t.pay.demoNote}</p></div></body></html>`;
+    const w = window.open("", "_blank", "width=800,height=900");
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
   };
   return (
     <Backdrop onClose={onClose}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10"><div className="flex items-center gap-2 font-bold text-emerald-300"><BrandLogo /> {t.pay.receipt}</div><Button variant="outline" size="sm" onClick={onClose} aria-label="Close">✕</Button></div>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <div className="flex items-center gap-2 font-bold text-emerald-300">
+          <BrandLogo /> {t.pay.receipt}
+        </div>
+        <Button variant="outline" size="sm" onClick={onClose} aria-label="Close">
+          ✕
+        </Button>
+      </div>
       <div className="p-4 space-y-2 text-sm">
         <RowKV label="Ref" value={payment.ref} />
         <RowKV label="Date" value={date} />
@@ -491,62 +1009,158 @@ const PaymentReceiptModal: React.FC<{ t: I18n; payment: Payment; onClose: () => 
         <RowKV label={t.pay.status} value={payment.status} />
         <RowKV label="Amount" value={<b>{formatPKR(payment.amount)}</b>} />
         <div className="text-xs opacity-70 mt-3">{t.pay.demoNote}</div>
-        <div className="flex gap-2 justify-end mt-4"><Button variant="outline" onClick={openPrintWindow}>{t.pay.print}</Button><Button onClick={onClose}>{t.pay.close}</Button></div>
+        <div className="flex gap-2 justify-end mt-4">
+          <Button variant="outline" onClick={openPrintWindow}>
+            {t.pay.print}
+          </Button>
+          <Button onClick={onClose}>{t.pay.close}</Button>
+        </div>
       </div>
     </Backdrop>
   );
 };
 
-const RedeemModal: React.FC<{ t: I18n; reward: (typeof rewardsCatalog)[number] | null; onClose: () => void; onConfirm: (denom: number) => void }> = ({ t, reward, onClose, onConfirm }) => {
+const RedeemModal: React.FC<{
+  t: I18n;
+  reward: (typeof rewardsCatalog)[number] | null;
+  onClose: () => void;
+  onConfirm: (denom: number) => void;
+}> = ({ t, reward, onClose, onConfirm }) => {
   const [denom, setDenom] = useState<number | null>(null);
   if (!reward) return null;
   return (
     <Backdrop onClose={onClose}>
       <div className="p-4">
-        <div className="font-bold mb-3">{t.rewards.choose}: {reward.title}</div>
+        <div className="font-bold mb-3">
+          {t.rewards.choose}: {reward.title}
+        </div>
         <div className="flex flex-wrap gap-2">
           {reward.denom.map((d) => (
-            <button key={d} type="button" onClick={() => setDenom(d)} className={cn("px-3 py-2 rounded-lg border font-semibold", denom === d ? "border-emerald-600 bg-emerald-900/20" : "border-white/10 bg-white/5 hover:bg-white/10")}>{formatPKR(d)}</button>
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDenom(d)}
+              className={cn(
+                "px-3 py-2 rounded-lg border font-semibold",
+                denom === d
+                  ? "border-emerald-600 bg-emerald-900/20"
+                  : "border-white/10 bg-white/5 hover:bg-white/10"
+              )}
+            >
+              {formatPKR(d)}
+            </button>
           ))}
         </div>
         <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={onClose}>{t.rewards.cancel}</Button>
-          <Button onClick={() => denom && onConfirm(denom)} disabled={!denom}>{t.rewards.confirm}</Button>
+          <Button variant="outline" onClick={onClose}>
+            {t.rewards.cancel}
+          </Button>
+          <Button onClick={() => denom && onConfirm(denom)} disabled={!denom}>
+            {t.rewards.confirm}
+          </Button>
         </div>
       </div>
     </Backdrop>
   );
 };
 
-const RedeemReceiptModal: React.FC<{ t: I18n; item: Redemption; onClose: () => void; lang?: 'en' | 'ur' }> = ({ t, item, onClose, lang = 'en' }) => {
-  const date = new Date(item.ts).toLocaleString('en-PK');
+const RedeemReceiptModal: React.FC<{
+  t: I18n;
+  item: Redemption;
+  onClose: () => void;
+  lang?: "en" | "ur";
+}> = ({ t, item, onClose, lang = "en" }) => {
+  const date = new Date(item.ts).toLocaleString("en-PK");
   const openPrintWindow = () => {
     const html = `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><title>Redemption Receipt</title><style>body{font-family:Arial, Helvetica, sans-serif;padding:24px;color:#0b0b0b} .card{max-width:720px;margin:0 auto;border-radius:12px;padding:18px;border:1px solid rgba(0,0,0,0.08)} .watermark{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:64px;color:rgba(0,0,0,0.04);pointer-events:none}</style></head><body><div class="watermark">DEMO</div><div class="card"><h2>${t.rewards.receiptTitle}</h2><p><strong>Ref:</strong> ${item.ref}</p><p><strong>Date:</strong> ${date}</p><p><strong>Reward:</strong> ${item.brand} — ${item.title} (${formatPKR(item.denomination)})</p><p><strong>${t.rewards.points}:</strong> ${item.points}</p><p style="opacity:0.8;font-size:12px">Demo receipt — no real fulfillment performed.</p></div></body></html>`;
-    const w = window.open('', '_blank', 'width=800,height=900'); if (!w) return; w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 400);
+    const w = window.open("", "_blank", "width=800,height=900");
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
   };
   return (
     <Backdrop onClose={onClose}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10"><div className="flex items-center gap-2 font-bold text-emerald-300"><BrandLogo /> {t.rewards.receiptTitle}</div><Button variant="outline" size="sm" onClick={onClose} aria-label="Close">✕</Button></div>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <div className="flex items-center gap-2 font-bold text-emerald-300">
+          <BrandLogo /> {t.rewards.receiptTitle}
+        </div>
+        <Button variant="outline" size="sm" onClick={onClose} aria-label="Close">
+          ✕
+        </Button>
+      </div>
       <div className="p-4 space-y-2 text-sm">
         <RowKV label="Ref" value={item.ref} />
         <RowKV label="Date" value={date} />
-        <RowKV label="Reward" value={`${item.brand} — ${item.title} (${formatPKR(item.denomination)})`} />
+        <RowKV
+          label="Reward"
+          value={`${item.brand} — ${item.title} (${formatPKR(
+            item.denomination
+          )})`}
+        />
         <RowKV label={t.rewards.points} value={String(item.points)} />
         <RowKV label={t.rewards.status} value={item.status} />
-        <div className="text-xs opacity-70 mt-3">Demo receipt — no real fulfillment performed.</div>
-        <div className="flex gap-2 justify-end mt-4"><Button variant="outline" onClick={openPrintWindow}>{t.pay.print}</Button><Button onClick={onClose}>{t.pay.close}</Button></div>
+        <div className="text-xs opacity-70 mt-3">
+          Demo receipt — no real fulfillment performed.
+        </div>
+        <div className="flex gap-2 justify-end mt-4">
+          <Button variant="outline" onClick={openPrintWindow}>
+            {t.pay.print}
+          </Button>
+          <Button onClick={onClose}>{t.pay.close}</Button>
+        </div>
       </div>
     </Backdrop>
   );
 };
 
-// ---------- Pages ----------
-const HomeTab: React.FC<{ t: I18n; role: Role; kyc: KycState; goProfile: () => void }> = ({ t, role, kyc, goProfile }) => {
-  const headline = role === "tenant" ? t.home.headlineTenant : t.home.headlineLandlord;
+// ---------- Page Tabs ----------
+const HomeTab: React.FC<{
+  t: I18n;
+  role: Role;
+  kyc: KycState;
+  goProfile: () => void;
+  sandbox: Sandbox;
+  setSandbox: React.Dispatch<React.SetStateAction<Sandbox>>;
+  onClearData: () => void;
+  onSeedTenant: () => void;
+  onSeedLandlord: () => void;
+  onScenarioRaastAuto: () => void;
+  onScenarioDeclineThenWallet: () => void;
+  onSimulateRaastCredit: () => void;
+  onKycNone: () => void;
+  onKycInProgress: () => void;
+  onKycVerified: () => void;
+  onSeedHistory: () => void;
+  loggingEnabled: boolean;
+}> = ({
+  t,
+  role,
+  kyc,
+  goProfile,
+  sandbox,
+  setSandbox,
+  onClearData,
+  onSeedTenant,
+  onSeedLandlord,
+  onScenarioRaastAuto,
+  onScenarioDeclineThenWallet,
+  onSimulateRaastCredit,
+  onKycNone,
+  onKycInProgress,
+  onKycVerified,
+  onSeedHistory,
+  loggingEnabled,
+}) => {
+  const headline =
+    role === "tenant" ? t.home.headlineTenant : t.home.headlineLandlord;
   const sub = role === "tenant" ? t.home.subTenant : t.home.subLandlord;
+
   return (
     <div>
       <SectionTitle title={headline} subtitle={sub} />
+
       {kyc !== "verified" ? (
         <div className="p-3 rounded-2xl border bg-white/5 border-white/10 flex items-center justify-between gap-2">
           <div>
@@ -556,9 +1170,11 @@ const HomeTab: React.FC<{ t: I18n; role: Role; kyc: KycState; goProfile: () => v
           <Button onClick={goProfile}>{t.home.kycCta}</Button>
         </div>
       ) : null}
+
       <div className="h-4" />
       <CardVisual />
       <div className="h-4" />
+
       {role === "tenant" ? (
         <div className="grid gap-2">
           <Row right="PKR 120,000">{t.home.tenantRows.pending}</Row>
@@ -572,15 +1188,70 @@ const HomeTab: React.FC<{ t: I18n; role: Role; kyc: KycState; goProfile: () => v
           <Row right="1 overdue">{t.home.landlordRows.followups}</Row>
         </div>
       )}
+
+      <div className="h-4" />
+      <SandboxPanel
+        t={t}
+        sandbox={sandbox}
+        setSandbox={setSandbox}
+        onClearData={onClearData}
+        onSeedTenant={onSeedTenant}
+        onSeedLandlord={onSeedLandlord}
+        onScenarioRaastAuto={onScenarioRaastAuto}
+        onScenarioDeclineThenWallet={onScenarioDeclineThenWallet}
+        onSimulateRaastCredit={onSimulateRaastCredit}
+        onKycNone={onKycNone}
+        onKycInProgress={onKycInProgress}
+        onKycVerified={onKycVerified}
+        onSeedHistory={onSeedHistory}
+        loggingEnabled={loggingEnabled}
+      />
     </div>
   );
 };
 
 // Helpers for PayTab
 const toCSV = (rows: string[][]) =>
-  [rows[0].join(","), ...rows.slice(1).map((r) => r.join(","))].join("\\n");
+  [rows[0].join(","), ...rows.slice(1).map((r) => r.join(","))].join("\n");
 
-const PayTab: React.FC<{ t: I18n; payments: Payment[]; addPayment: (p: Payment) => void; updatePayment: (id: string, patch: Partial<Payment>) => void; role: Role; utm: Utm; onOpenReceipt: (p: Payment) => void; demoIban?: string; }> = ({ t, payments, addPayment, updatePayment, role, utm, onOpenReceipt, demoIban }) => {
+const CopyBtn: React.FC<{ label: string; onCopy: () => void }> = ({
+  label,
+  onCopy,
+}) => (
+  <button
+    type="button"
+    onClick={onCopy}
+    className="px-2 py-1 rounded-md border border-white/10 bg-white/5 text-xs hover:bg-white/10"
+  >
+    {label}
+  </button>
+);
+
+const PayTab: React.FC<{
+  t: I18n;
+  payments: Payment[];
+  addPayment: (p: Payment) => void;
+  updatePayment: (id: string, patch: Partial<Payment>) => void;
+  role: Role;
+  utm: Utm;
+  onOpenReceipt: (p: Payment) => void;
+  demoIban?: string;
+  sandbox: Sandbox;
+  notify: (msg: string, kind?: ToastKind) => void;
+  busEmit: (type: string, payload: any) => void;
+}> = ({
+  t,
+  payments,
+  addPayment,
+  updatePayment,
+  role,
+  utm,
+  onOpenReceipt,
+  demoIban,
+  sandbox,
+  notify,
+  busEmit,
+}) => {
   const [amountView, setAmountView] = useState<string>("");
   const [amountVal, setAmountVal] = useState<number>(0);
   const [landlord, setLandlord] = useState<string>("");
@@ -588,49 +1259,151 @@ const PayTab: React.FC<{ t: I18n; payments: Payment[]; addPayment: (p: Payment) 
   const [message, setMessage] = useState<string>("");
 
   const logPayment = async (p: Payment) => {
-    await postToSheet({ table: "payments", ref: p.ref, amount: p.amount, landlord: p.landlord, method: p.method, status: p.status, ts: new Date(p.ts).toISOString(), role, utmSource: utm.source, utmMedium: utm.medium, utmCampaign: utm.campaign, ua: getUA() });
+    await postToSheet({
+      table: "payments",
+      ref: p.ref,
+      amount: p.amount,
+      landlord: p.landlord,
+      method: p.method,
+      status: p.status,
+      ts: new Date(p.ts).toISOString(),
+      role,
+      utmSource: utm.source,
+      utmMedium: utm.medium,
+      utmCampaign: utm.campaign,
+      ua: getUA(),
+    });
   };
 
   const handleCreate = async () => {
-    if (!amountVal || amountVal <= 0 || !landlord.trim()) { setMessage(t.pay.invalid); return; }
+    if (!amountVal || amountVal <= 0 || !landlord.trim()) {
+      setMessage(t.pay.invalid);
+      return;
+    }
     const id = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
     const ref = `RB-${Math.floor(100000 + Math.random() * 900000)}`;
-    const status: PaymentStatus = method === "Bank Transfer" ? "initiated" : "succeeded";
-    const base: Payment = { id, amount: amountVal, landlord: landlord.trim(), method, status, ts: Date.now(), ref };
+    let status: PaymentStatus = "succeeded";
+    if (method === "Bank Transfer") status = "initiated";
+    if (method !== "Bank Transfer" && sandbox.forceCardOutcome !== "auto") {
+      status = sandbox.forceCardOutcome === "succeed" ? "succeeded" : "refunded";
+    }
+    const base: Payment = {
+      id,
+      amount: amountVal,
+      landlord: landlord.trim(),
+      method,
+      status,
+      ts: Date.now(),
+      ref,
+    };
+
     addPayment(base);
-    setMessage(status === "succeeded" ? "Payment succeeded (demo). View receipt below." : "Transfer instructions generated below. Mark as sent when done.");
-    setAmountView(""); setAmountVal(0); setLandlord(""); await logPayment(base);
+    busEmit("payment:create", base);
+
+    if (base.method === "Bank Transfer" && sandbox.autoMarkSent) {
+      setTimeout(() => {
+        updatePayment(base.id, { status: "sent" });
+        busEmit("payment:bank_auto_sent", { id: base.id, ref: base.ref });
+      }, sandbox.latencyMs);
+    }
+
+    setMessage(
+      base.status === "succeeded"
+        ? "Payment succeeded (demo). View receipt below."
+        : base.method === "Bank Transfer"
+        ? "Transfer instructions generated below. Mark as sent when done."
+        : "Payment failed (demo). Try again."
+    );
+    setAmountView("");
+    setAmountVal(0);
+    setLandlord("");
+    await logPayment(base);
   };
 
   const markSent = async (id: string) => {
-    const p = payments.find((x) => x.id === id); if (!p) return;
+    const p = payments.find((x) => x.id === id);
+    if (!p) return;
     const patch: Partial<Payment> = { status: "sent" };
-    updatePayment(id, patch); await logPayment({ ...p, ...patch } as Payment);
+    updatePayment(id, patch);
+    busEmit("payment:mark_sent", { id, ref: p.ref });
+    await logPayment({ ...p, ...patch } as Payment);
   };
 
   const refund = async (id: string) => {
-    const p = payments.find((x) => x.id === id); if (!p || p.status === "refunded") return;
+    const p = payments.find((x) => x.id === id);
+    if (!p || p.status === "refunded") return;
     const patch: Partial<Payment> = { status: "refunded" };
-    updatePayment(id, patch); await logPayment({ ...p, ...patch } as Payment);
+    updatePayment(id, patch);
+    busEmit("payment:refunded", { id, ref: p.ref });
+    await logPayment({ ...p, ...patch } as Payment);
   };
 
   const downloadCSV = () => {
-    const headers = ["ref","amount","landlord","method","status","ts","role"];
-    const rows = payments.map((p) => [p.ref, String(p.amount), p.landlord, p.method, p.status, new Date(p.ts).toISOString(), role]);
+    const headers = ["ref", "amount", "landlord", "method", "status", "ts", "role"];
+    const rows = payments.map((p) => [
+      p.ref,
+      String(p.amount),
+      p.landlord,
+      p.method,
+      p.status,
+      new Date(p.ts).toISOString(),
+      role,
+    ]);
     const csv = toCSV([headers, ...rows]);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "rentback-demo-payments.csv"; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "rentback-demo-payments.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      notify(t.copiedToast || t.pay.copied, "success");
+    } catch {
+      notify("Copy failed", "error");
+    }
   };
 
   return (
     <div>
       <SectionTitle title={t.pay.title} subtitle={t.pay.subtitle} />
       <div className="grid gap-2 mb-3">
-        <input value={amountView} onChange={(e) => { const { view, value } = formatPKRInput(e.target.value); setAmountView(view); setAmountVal(value); }} placeholder={t.pay.amount} inputMode="numeric" className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none" />
-        <input value={landlord} onChange={(e) => setLandlord(e.target.value)} placeholder={t.pay.landlord} className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none" />
-        <select value={method} onChange={(e) => setMethod(e.target.value as Payment["method"]) } className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"><option>Bank Transfer</option><option>Card</option><option>Wallet</option></select>
-        <div className="flex flex-wrap gap-2"><Button onClick={handleCreate}>{t.pay.create}</Button><Button variant="outline" onClick={downloadCSV}>{t.pay.csv}</Button></div>
+        <input
+          value={amountView}
+          onChange={(e) => {
+            const { view, value } = formatPKRInput(e.target.value);
+            setAmountView(view);
+            setAmountVal(value);
+          }}
+          placeholder={t.pay.amount}
+          inputMode="numeric"
+          className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"
+        />
+        <input
+          value={landlord}
+          onChange={(e) => setLandlord(e.target.value)}
+          placeholder={t.pay.landlord}
+          className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"
+        />
+        <select
+          value={method}
+          onChange={(e) => setMethod(e.target.value as Payment["method"])}
+          className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"
+        >
+          <option>Bank Transfer</option>
+          <option>Card</option>
+          <option>Wallet</option>
+        </select>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleCreate}>{t.pay.create}</Button>
+          <Button variant="outline" onClick={downloadCSV}>
+            {t.pay.csv}
+          </Button>
+        </div>
         {message ? <div className="text-[12px] text-emerald-300">{message}</div> : null}
       </div>
 
@@ -639,29 +1412,89 @@ const PayTab: React.FC<{ t: I18n; payments: Payment[]; addPayment: (p: Payment) 
         {payments.length === 0 ? (
           <div className="text-[13px] opacity-70">No demo payments yet.</div>
         ) : (
-          payments.slice().sort((a,b) => b.ts - a.ts).map((p) => (
-            <div key={p.id} className="p-3 rounded-xl border border-white/10 bg-white/5">
-              <div className="flex items-center justify-between font-semibold"><span>{p.landlord}</span><span>{formatPKR(p.amount)}</span></div>
-              <div className="flex items-center justify-between mt-1 text-[12px] opacity-80"><span>{p.method} • Ref {p.ref}</span><span className={cn(p.status === "succeeded" ? "text-emerald-300" : p.status === "sent" ? "text-amber-300" : p.status === "refunded" ? "text-slate-400" : "text-slate-200")}>{p.status === "succeeded" ? t.pay.succeeded : p.status === "sent" ? t.pay.sent : p.status === "refunded" ? t.pay.refunded : t.pay.instructions}</span></div>
-              {p.method === "Bank Transfer" && p.status === "initiated" ? (
-                <div className="mt-2 text-[12px] space-y-1">
-                  <div>{t.pay.transferTo}: <b>{t.pay.collections}</b></div>
-                  <div>{t.pay.iban}: <b>{demoIban || t.pay.ibanValue}</b></div>
-                  <div>{t.pay.memo}: <b>{p.ref}</b></div>
-                  <div className="flex items-center gap-3 mt-2">
-                    <div className="rounded-xl border border-white/10 p-2">
-                      <div className="text-[11px] opacity-70">{t.pay.raastQR}</div>
-                      <div className="bg-white p-2 rounded-lg inline-block">
-                        <RaastQR value={`RB|${demoIban || t.pay.ibanValue}|${p.ref}|${p.amount}`} size={112} />
-                      </div>
-                    </div>
-                    <Button onClick={() => markSent(p.id)}>{t.pay.markSent}</Button>
-                  </div>
+          payments
+            .slice()
+            .sort((a, b) => b.ts - a.ts)
+            .map((p) => (
+              <div key={p.id} className="p-3 rounded-xl border border-white/10 bg-white/5">
+                <div className="flex items-center justify-between font-semibold">
+                  <span>{p.landlord}</span>
+                  <span>{formatPKR(p.amount)}</span>
                 </div>
-              ) : null}
-              <div className="mt-2 flex flex-wrap gap-2"><Button variant="outline" onClick={() => onOpenReceipt(p)}>{t.pay.receipt}</Button><Button variant="outline" onClick={() => refund(p.id)} disabled={p.status === "refunded" || p.status === "initiated"}>{p.status === "refunded" ? t.pay.refunded : t.pay.refund}</Button></div>
-            </div>
-          ))
+                <div className="flex items-center justify-between mt-1 text-[12px] opacity-80">
+                  <span>
+                    {p.method} • Ref {p.ref}
+                  </span>
+                  <span
+                    className={cn(
+                      p.status === "succeeded"
+                        ? "text-emerald-300"
+                        : p.status === "sent"
+                        ? "text-amber-300"
+                        : p.status === "refunded"
+                        ? "text-slate-400"
+                        : "text-slate-200"
+                    )}
+                  >
+                    {p.status === "succeeded"
+                      ? t.pay.succeeded
+                      : p.status === "sent"
+                      ? t.pay.sent
+                      : p.status === "refunded"
+                      ? t.pay.refunded
+                      : t.pay.instructions}
+                  </span>
+                </div>
+
+                {p.method === "Bank Transfer" && p.status === "initiated" ? (
+                  <div className="mt-2 text-[12px] space-y-1">
+                    <div>
+                      {t.pay.transferTo}: <b>{t.pay.collections}</b>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span>
+                        {t.pay.iban}: <b>{demoIban || t.pay.ibanValue}</b>
+                      </span>
+                      <CopyBtn
+                        label={t.pay.copy}
+                        onCopy={() => copy(demoIban || t.pay.ibanValue)}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span>
+                        {t.pay.memo}: <b>{p.ref}</b>
+                      </span>
+                      <CopyBtn label={t.pay.copy} onCopy={() => copy(p.ref)} />
+                    </div>
+                    <div className="flex items-center gap-3 mt-2">
+                      <div className="rounded-xl border border-white/10 p-2">
+                        <div className="text-[11px] opacity-70">{t.pay.raastQR}</div>
+                        <div className="bg-white p-2 rounded-lg inline-block">
+                          <RaastQR
+                            value={`RB|${demoIban || t.pay.ibanValue}|${p.ref}|${p.amount}`}
+                            size={112}
+                          />
+                        </div>
+                      </div>
+                      <Button onClick={() => markSent(p.id)}>{t.pay.markSent}</Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => onOpenReceipt(p)}>
+                    {t.pay.receipt}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => refund(p.id)}
+                    disabled={p.status === "refunded" || p.status === "initiated"}
+                  >
+                    {p.status === "refunded" ? t.pay.refunded : t.pay.refund}
+                  </Button>
+                </div>
+              </div>
+            ))
         )}
       </div>
     </div>
@@ -669,13 +1502,42 @@ const PayTab: React.FC<{ t: I18n; payments: Payment[]; addPayment: (p: Payment) 
 };
 
 // Rewards Tab
-const RewardsTab: React.FC<{ t: I18n; redemptions: Redemption[]; setRedemptions: React.Dispatch<React.SetStateAction<Redemption[]>>; role: Role; utm: Utm; onOpenRedeemReceipt: (r: Redemption) => void; }> = ({ t, redemptions, setRedemptions }) => {
-  const redeem = (r: typeof rewardsCatalog[number], denom: number) => {
+const RewardsTab: React.FC<{
+  t: I18n;
+  redemptions: Redemption[];
+  setRedemptions: React.Dispatch<React.SetStateAction<Redemption[]>>;
+  role: Role;
+  utm: Utm;
+  onOpenRedeemReceipt: (r: Redemption) => void;
+  sandbox: Sandbox;
+  busEmit: (type: string, payload: any) => void;
+}> = ({ t, redemptions, setRedemptions, onOpenRedeemReceipt, sandbox, busEmit }) => {
+  const [pick, setPick] =
+    useState<(typeof rewardsCatalog)[number] | null>(null);
+
+  const confirmRedeem = (denom: number) => {
+    if (!pick) return;
     const id = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
     const ref = `RB-REDEEM-${Math.floor(100000 + Math.random() * 900000)}`;
-    const item: Redemption = { id, ref, rewardId: r.id, brand: r.brand, title: r.title, denomination: denom, points: Math.round(denom/10), status: "requested", ts: Date.now() };
+    const ptsBase = Math.round(denom / 10);
+    const pts = Math.round(ptsBase * (sandbox.pointsMultiplier || 1));
+    const item: Redemption = {
+      id,
+      ref,
+      rewardId: pick.id,
+      brand: pick.brand,
+      title: pick.title,
+      denomination: denom,
+      points: pts,
+      status: "requested",
+      ts: Date.now(),
+    };
     setRedemptions((prev) => [item, ...prev]);
+    busEmit("reward:redeem_request", item);
+    setPick(null);
+    onOpenRedeemReceipt(item);
   };
+
   return (
     <div>
       <SectionTitle title={t.rewards.title} subtitle={t.rewards.subtitle} />
@@ -684,126 +1546,743 @@ const RewardsTab: React.FC<{ t: I18n; redemptions: Redemption[]; setRedemptions:
           <div key={r.id} className="p-3 rounded-xl border border-white/10 bg-white/5">
             <div className="font-semibold">{r.title}</div>
             <div className="text-[12px] opacity-70">{r.note}</div>
-            <div className="mt-1 text-[11px] inline-block px-2 py-1 rounded bg-emerald-900/30 text-emerald-300">{r.save}</div>
-            <div className="mt-2 flex flex-wrap gap-2">{r.denom.map((d) => <Button key={d} size="sm" onClick={() => redeem(r, d)}>{d}</Button>)}</div>
+            <div className="mt-1 text-[11px] inline-block px-2 py-1 rounded bg-emerald-900/30 text-emerald-300">
+              {r.save}
+            </div>
+            <div className="mt-2">
+              <Button size="sm" onClick={() => setPick(r)}>
+                {t.rewards.redeem}
+              </Button>
+            </div>
           </div>
         ))}
       </div>
+
       <div className="h-4" />
       <SectionTitle title={t.rewards.recent} />
       {redemptions.length === 0 ? (
         <div className="text-[13px] opacity-70">{t.rewards.none}</div>
       ) : (
         <div className="grid gap-2">
-          {redemptions.slice().sort((a,b)=>b.ts-a.ts).map((r) => (
-            <div key={r.id} className="p-3 rounded-xl border border-white/10 bg-white/5">
-              <div className="flex items-center justify-between font-semibold"><span>{r.brand} — {r.title}</span><span className={cn(r.status === "fulfilled" ? "text-emerald-300" : r.status === "cancelled" ? "text-slate-400" : "text-slate-200")}>{r.status}</span></div>
-              <div className="flex items-center justify-between mt-1 text-[12px] opacity-80"><span>Ref {r.ref} • {t.rewards.points}: {r.points}</span><span>{new Date(r.ts).toLocaleString("en-PK")}</span></div>
-            </div>
-          ))}
+          {redemptions
+            .slice()
+            .sort((a, b) => b.ts - a.ts)
+            .map((r) => (
+              <div key={r.id} className="p-3 rounded-xl border border-white/10 bg-white/5">
+                <div className="flex items-center justify-between font-semibold">
+                  <span>
+                    {r.brand} — {r.title}
+                  </span>
+                  <span
+                    className={cn(
+                      r.status === "fulfilled"
+                        ? "text-emerald-300"
+                        : r.status === "cancelled"
+                        ? "text-slate-400"
+                        : "text-slate-200"
+                    )}
+                  >
+                    {r.status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-1 text-[12px] opacity-80">
+                  <span>
+                    Ref {r.ref} • {t.rewards.points}: {r.points}{" "}
+                    {sandbox.pointsMultiplier !== 1 ? "×" + sandbox.pointsMultiplier : ""}
+                  </span>
+                  <span>{new Date(r.ts).toLocaleString("en-PK")}</span>
+                </div>
+                <div className="mt-2">
+                  <Button variant="outline" onClick={() => onOpenRedeemReceipt(r)}>
+                    {t.rewards.viewReceipt}
+                  </Button>
+                </div>
+              </div>
+            ))}
         </div>
       )}
+
+      {pick ? (
+        <RedeemModal
+          t={t}
+          reward={pick}
+          onClose={() => setPick(null)}
+          onConfirm={confirmRedeem}
+        />
+      ) : null}
     </div>
   );
 };
 
 // Support/Profile/Status/Security/About/Founder
-const SupportTab: React.FC<{ t: I18n }> = ({ t }) => (<div><SectionTitle title={t.support.title} subtitle={t.support.subtitle} /><Row right="help@rentback.app">{t.support.email}</Row><div className="h-2" /><Row right="@rentback">{t.support.twitter}</Row></div>);
-const ProfileTab: React.FC<{ t: I18n; kyc: KycState; setKyc: (k: KycState) => void }> = ({ t, kyc, setKyc }) => (
-  <div><SectionTitle title={t.profile.title} /><Row right={kyc === 'verified' ? t.profile.verified : kyc === 'in-progress' ? t.profile.inprogress : t.profile.notStarted}>{t.profile.kyc}</Row><div className="h-2" />{kyc !== 'verified' ? (<Button onClick={() => setKyc(kyc === 'none' ? 'in-progress' : 'verified')}>{kyc === 'none' ? t.profile.start : t.profile.complete}</Button>) : (<div className="text-[12px] opacity-75">{t.profile.thanks}</div>)}</div>
+const SupportTab: React.FC<{ t: I18n }> = ({ t }) => (
+  <div>
+    <SectionTitle title={t.support.title} subtitle={t.support.subtitle} />
+    <Row right="help@rentback.app">{t.support.email}</Row>
+  </div>
 );
-const StatusScreen: React.FC<{ t: I18n }> = ({ t }) => (<div><SectionTitle title={t.status.title} subtitle={t.status.subtitle} /><ul className="pl-5 leading-7 list-disc">{t.status.items.map((it: string, i: number) => (<li key={i}>{it}</li>))}</ul></div>);
-const SecurityPrivacy: React.FC<{ t: I18n }> = ({ t }) => (<div><SectionTitle title={t.security.title} subtitle={t.security.subtitle} /><ul className="pl-5 leading-7 list-disc">{t.security.items.map((it: string, i: number) => (<li key={i}>{it}</li>))}</ul></div>);
-const AboutScreen: React.FC<{ t: I18n }> = ({ t }) => (<div><SectionTitle title={t.about.title} subtitle={t.about.sub} /><p className="leading-6">{t.about.body}</p></div>);
-const FounderScreen: React.FC<{ t: I18n }> = ({ t }) => (<div><SectionTitle title={t.founder.title} /><div className="grid gap-2"><Row right="CEO">Suhail Ahmed</Row><Row right="help@rentback.app">{t.founder.contact}</Row></div></div>);
+
+const ProfileTab: React.FC<{
+  t: I18n;
+  kyc: KycState;
+  setKyc: (k: KycState) => void;
+  notify: (msg: string, kind?: ToastKind) => void;
+}> = ({ t, kyc, setKyc, notify }) => {
+  const [name, setName] = useState<string>(() => {
+    try {
+      return localStorage.getItem("rb-profile-name") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [cnic, setCnic] = useState<string>(() => {
+    try {
+      return localStorage.getItem("rb-profile-cnic") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [property, setProperty] = useState<string>(() => {
+    try {
+      return localStorage.getItem("rb-profile-property") || "";
+    } catch {
+      return "";
+    }
+  });
+
+  const save = () => {
+    try {
+      localStorage.setItem("rb-profile-name", name);
+      localStorage.setItem("rb-profile-cnic", cnic);
+      localStorage.setItem("rb-profile-property", property);
+      notify(t.profile.saved, "success");
+    } catch {
+      // ignore
+    }
+  };
+
+  return (
+    <div>
+      <SectionTitle title={t.profile.title} />
+      <Row
+        right={
+          kyc === "verified"
+            ? t.profile.verified
+            : kyc === "in-progress"
+            ? t.profile.inprogress
+            : t.profile.notStarted
+        }
+      >
+        {t.profile.kyc}
+      </Row>
+      <div className="h-2" />
+      {kyc !== "verified" ? (
+        <Button
+          onClick={() => setKyc(kyc === "none" ? "in-progress" : "verified")}
+        >
+          {kyc === "none" ? t.profile.start : t.profile.complete}
+        </Button>
+      ) : (
+        <div className="text-[12px] opacity-75">{t.profile.thanks}</div>
+      )}
+
+      <div className="h-4" />
+      <div className="grid gap-2">
+        <input
+          className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"
+          placeholder={t.profile.name}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"
+          placeholder={t.profile.cnic}
+          value={cnic}
+          onChange={(e) => setCnic(e.target.value)}
+        />
+        <input
+          className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"
+          placeholder={t.profile.property}
+          value={property}
+          onChange={(e) => setProperty(e.target.value)}
+        />
+        <div>
+          <Button onClick={save}>{t.profile.save}</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StatusScreen: React.FC<{ t: I18n }> = ({ t }) => (
+  <div>
+    <SectionTitle title={t.status.title} subtitle={t.status.subtitle} />
+    <ul className="pl-5 leading-7 list-disc">
+      {t.status.items.map((it: string, i: number) => (
+        <li key={i}>{it}</li>
+      ))}
+    </ul>
+  </div>
+);
+
+const SecurityPrivacy: React.FC<{ t: I18n }> = ({ t }) => (
+  <div>
+    <SectionTitle title={t.security.title} subtitle={t.security.subtitle} />
+    <ul className="pl-5 leading-7 list-disc">
+      {t.security.items.map((it: string, i: number) => (
+        <li key={i}>{it}</li>
+      ))}
+    </ul>
+  </div>
+);
+
+const AboutScreen: React.FC<{ t: I18n }> = ({ t }) => (
+  <div>
+    <SectionTitle title={t.about.title} subtitle={t.about.sub} />
+    <p className="leading-6">{t.about.body}</p>
+  </div>
+);
+
+const FounderScreen: React.FC<{ t: I18n }> = ({ t }) => (
+  <div>
+    <SectionTitle title={t.founder.title} />
+    <div className="grid gap-2">
+      <Row right="CEO">Suhail Ahmed</Row>
+      <Row right="help@rentback.app">{t.founder.contact}</Row>
+    </div>
+  </div>
+);
 
 // ---------- App ----------
 export default function App() {
-  const [tab, setTab] = useState<Tab>('home');
+  const [tab, setTab] = useState<Tab>("home");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [role, setRole] = useState<Role>('tenant');
-  const [kyc, setKyc] = useState<KycState>('none');
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
+  const [role, setRole] = useState<Role>(() => {
+    try {
+      const saved = localStorage.getItem("rb-role");
+      if (saved === "tenant" || saved === "landlord") return saved;
+    } catch {}
+    return "tenant";
+  });
+  const [kyc, setKyc] = useState<KycState>(() => {
+    try {
+      const saved = localStorage.getItem("rb-kyc");
+      if (saved === "none" || saved === "in-progress" || saved === "verified")
+        return saved;
+    } catch {}
+    return "none";
+  });
+  const [payments, setPayments] = useState<Payment[]>(() => {
+    try {
+      const raw = localStorage.getItem("rb-demo-payments");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
+  });
+  const [redemptions, setRedemptions] = useState<Redemption[]>(() => {
+    try {
+      const raw = localStorage.getItem("rb-demo-redemptions");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
+  });
   const [receiptFor, setReceiptFor] = useState<Payment | null>(null);
   const [redeemReceipt, setRedeemReceipt] = useState<Redemption | null>(null);
   const [demoIban, setDemoIban] = useState<string>(copy.en.pay.ibanValue);
-  const [lang, setLang] = useState<'en' | 'ur'>('en');
-  const dir: 'ltr' | 'rtl' = lang === 'ur' ? 'rtl' : 'ltr';
+  const [lang, setLang] = useState<"en" | "ur">(() => {
+    try {
+      const saved = localStorage.getItem("rb-lang");
+      if (saved === "en" || saved === "ur") return saved;
+    } catch {}
+    return "en";
+  });
+  const dir: "ltr" | "rtl" = lang === "ur" ? "rtl" : "ltr";
   const t: I18n = (copy as any)[lang] as I18n;
   const utm = useMemo(() => getUtm(), []);
   const { notify, ToastStack } = useToasts();
   const bus = useEventBus();
 
-  useEffect(() => { try { const root = document.documentElement; root.setAttribute('lang', lang); root.setAttribute('dir', dir); } catch {} }, [lang, dir]);
-  useEffect(() => { try { const raw = localStorage.getItem('rb-demo-payments'); if (raw) setPayments(JSON.parse(raw)); } catch {} }, []);
-  useEffect(() => { try { localStorage.setItem('rb-demo-payments', JSON.stringify(payments)); } catch {} }, [payments]);
-  useEffect(() => { try { const raw = localStorage.getItem('rb-demo-redemptions'); if (raw) setRedemptions(JSON.parse(raw)); } catch {} }, []);
-  useEffect(() => { try { localStorage.setItem('rb-demo-redemptions', JSON.stringify(redemptions)); } catch {} }, [redemptions]);
-  useEffect(() => { try { const saved = localStorage.getItem('rb-lang'); if (saved === 'en' || saved === 'ur') setLang(saved as any); } catch {} }, []);
-  useEffect(() => { try { localStorage.setItem('rb-lang', lang); } catch {} }, [lang]);
+  const [sandbox, setSandbox] = useState<Sandbox>(() => {
+    try {
+      const raw = localStorage.getItem("rb-sandbox");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {
+      latencyMs: 400,
+      forceCardOutcome: "auto",
+      autoMarkSent: false,
+      pointsMultiplier: 1,
+      showInspector: false,
+    };
+  });
 
+  const loggingEnabled = !!(window as any)?.RB_PAYMENTS_ENDPOINT;
+
+  // Persist & lang/dir reflect
+  useEffect(() => {
+    try {
+      const root = document.documentElement;
+      root.setAttribute("lang", lang);
+      root.setAttribute("dir", dir);
+      localStorage.setItem("rb-lang", lang);
+    } catch {}
+  }, [lang, dir]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("rb-demo-payments", JSON.stringify(payments));
+    } catch {}
+  }, [payments]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("rb-demo-redemptions", JSON.stringify(redemptions));
+    } catch {}
+  }, [redemptions]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("rb-role", role);
+    } catch {}
+  }, [role]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("rb-kyc", kyc);
+    } catch {}
+  }, [kyc]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("rb-sandbox", JSON.stringify(sandbox));
+    } catch {}
+  }, [sandbox]);
+
+  // Sandbox actions
+  const clearData = () => {
+    setPayments([]);
+    setRedemptions([]);
+    notify("Cleared demo data", "success");
+    bus.emit("sandbox:clear", {});
+  };
+
+  const seedTenant = () => {
+    const now = Date.now();
+    const seed: Payment[] = [
+      {
+        id: String(now),
+        ref: "RB-100201",
+        amount: 120000,
+        landlord: "Khan Estates – DHA Phase 6",
+        method: "Bank Transfer",
+        status: "sent",
+        ts: now - 2 * 24 * 3600 * 1000,
+      },
+      {
+        id: String(now + 1),
+        ref: "RB-100202",
+        amount: 120000,
+        landlord: "Khan Estates – DHA Phase 6",
+        method: "Card",
+        status: "succeeded",
+        ts: now - (24 * 3600 * 1000 + 3 * 3600 * 1000),
+      },
+      {
+        id: String(now + 2),
+        ref: "RB-200101",
+        amount: 95000,
+        landlord: "Al-Hameed Apartments – Unit 3B",
+        method: "Wallet",
+        status: "succeeded",
+        ts: now - 13 * 24 * 3600 * 1000,
+      },
+      {
+        id: String(now + 3),
+        ref: "RB-300777",
+        amount: 180000,
+        landlord: "GreenView Towers – Unit 12A",
+        method: "Bank Transfer",
+        status: "initiated",
+        ts: now - 5 * 3600 * 1000,
+      },
+    ];
+    setPayments(seed);
+    bus.emit("sandbox:seed_tenant", { count: seed.length });
+  };
+
+  const seedLandlord = () => {
+    // For now, just emit and adjust HomeTab rows (static) — future: add ledger
+    bus.emit("sandbox:seed_landlord", { units: 3, expected: 360000 });
+  };
+
+  const scenarioRaastAuto = () => {
+    const id = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+    const ref = `RB-${Math.floor(100000 + Math.random() * 900000)}`;
+    const p: Payment = {
+      id,
+      ref,
+      amount: 125000,
+      landlord: "City View Residency – Block B",
+      method: "Bank Transfer",
+      status: "initiated",
+      ts: Date.now(),
+    };
+    setPayments((prev) => [p, ...prev]);
+    bus.emit("scenario:raast_auto", p);
+
+    if (sandbox.autoMarkSent) {
+      setTimeout(() => {
+        setPayments((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: "sent" } : x)));
+        bus.emit("payment:bank_auto_sent", { id: p.id, ref: p.ref });
+      }, sandbox.latencyMs);
+    }
+  };
+
+  const scenarioDeclineThenWallet = async () => {
+    const id1 = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+    const ref1 = `RB-${Math.floor(100000 + Math.random() * 900000)}`;
+    const fail: Payment = {
+      id: id1,
+      ref: ref1,
+      amount: 110000,
+      landlord: "Pearl Residency – 2nd Floor",
+      method: "Card",
+      status: sandbox.forceCardOutcome === "succeed" ? "succeeded" : "refunded",
+      ts: Date.now(),
+    };
+    setPayments((prev) => [fail, ...prev]);
+    bus.emit("scenario:card_attempt", fail);
+
+    // Simulate retry via wallet
+    await sleep(sandbox.latencyMs || 400);
+    const id2 = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+    const ref2 = `RB-${Math.floor(100000 + Math.random() * 900000)}`;
+    const ok: Payment = {
+      id: id2,
+      ref: ref2,
+      amount: 110000,
+      landlord: fail.landlord,
+      method: "Wallet",
+      status: "succeeded",
+      ts: Date.now(),
+    };
+    setPayments((prev) => [ok, ...prev]);
+    bus.emit("scenario:wallet_success", ok);
+  };
+
+  const simulateRaastCredit = async () => {
+    // Find most recent bank transfer that's initiated or sent and flip to succeeded
+    const target = payments.find(
+      (p) => p.method === "Bank Transfer" && (p.status === "initiated" || p.status === "sent")
+    );
+    if (!target) {
+      notify("No pending bank transfer to credit", "info");
+      return;
+    }
+    await sleep(sandbox.latencyMs || 400);
+    setPayments((prev) =>
+      prev.map((x) => (x.id === target.id ? { ...x, status: "succeeded" } : x))
+    );
+    bus.emit("payment:raast_credited", { id: target.id, ref: target.ref });
+    notify("Raast credit detected (demo)", "success");
+  };
+
+  const seedHistory = () => {
+    // Minimal: add a couple of older payments & redemptions
+    const now = Date.now();
+    const add: Payment[] = [
+      {
+        id: String(now + 10),
+        ref: "RB-889901",
+        amount: 100000,
+        landlord: "Garden Heights – Unit 5C",
+        method: "Bank Transfer",
+        status: "succeeded",
+        ts: now - 45 * 24 * 3600 * 1000,
+      },
+      {
+        id: String(now + 11),
+        ref: "RB-889902",
+        amount: 100000,
+        landlord: "Garden Heights – Unit 5C",
+        method: "Card",
+        status: "succeeded",
+        ts: now - 15 * 24 * 3600 * 1000,
+      },
+    ];
+    setPayments((prev) => [...add, ...prev]);
+
+    const addR: Redemption[] = [
+      {
+        id: String(now + 12),
+        ref: "RB-REDEEM-770001",
+        rewardId: "daraz",
+        brand: "Daraz",
+        title: "Daraz Voucher",
+        denomination: 1000,
+        points: Math.round(100 * (sandbox.pointsMultiplier || 1)),
+        status: "fulfilled",
+        ts: now - 7 * 24 * 3600 * 1000,
+      },
+    ];
+    setRedemptions((prev) => [...addR, ...prev]);
+    bus.emit("sandbox:seed_history", { payments: add.length, redemptions: addR.length });
+  };
+
+  // Wire profile receipt fields into print (done in PaymentReceiptModal)
+
+  // content switch
   const content = useMemo(() => {
     switch (tab) {
-      case 'home': return <HomeTab t={t} role={role} kyc={kyc} goProfile={() => setTab('profile')} />;
-      case 'pay': return <PayTab t={t} payments={payments} addPayment={(p) => { setPayments((prev) => [p, ...prev]); bus.emit('payment:create', p); }} updatePayment={(id, patch) => setPayments((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))} role={role} utm={utm} onOpenReceipt={(p) => setReceiptFor(p)} demoIban={demoIban} />;
-      case 'rewards': return <RewardsTab t={t} redemptions={redemptions} setRedemptions={setRedemptions} role={role} utm={utm} onOpenRedeemReceipt={(r) => setRedeemReceipt(r)} />;
-      case 'support': return <><SectionTitle title={t.support.title} subtitle={t.support.subtitle} /><Row right="help@rentback.app">{t.support.email}</Row><div className="h-2" /><Row right="@rentback">{t.support.twitter}</Row></>;
-      case 'profile': return <ProfileTab t={t} kyc={kyc} setKyc={setKyc} />;
-      case 'status': return <StatusScreen t={t} />;
-      case 'security': return <SecurityPrivacy t={t} />;
-      case 'about': return <AboutScreen t={t} />;
-      case 'founder': return <FounderScreen t={t} />;
-      default: return null;
+      case "home":
+        return (
+          <HomeTab
+            t={t}
+            role={role}
+            kyc={kyc}
+            goProfile={() => setTab("profile")}
+            sandbox={sandbox}
+            setSandbox={setSandbox}
+            onClearData={clearData}
+            onSeedTenant={seedTenant}
+            onSeedLandlord={seedLandlord}
+            onScenarioRaastAuto={scenarioRaastAuto}
+            onScenarioDeclineThenWallet={scenarioDeclineThenWallet}
+            onSimulateRaastCredit={simulateRaastCredit}
+            onKycNone={() => setKyc("none")}
+            onKycInProgress={() => setKyc("in-progress")}
+            onKycVerified={() => setKyc("verified")}
+            onSeedHistory={seedHistory}
+            loggingEnabled={loggingEnabled}
+          />
+        );
+      case "pay":
+        return (
+          <PayTab
+            t={t}
+            payments={payments}
+            addPayment={(p) => {
+              setPayments((prev) => [p, ...prev]);
+            }}
+            updatePayment={(id, patch) =>
+              setPayments((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+            }
+            role={role}
+            utm={utm}
+            onOpenReceipt={(p) => setReceiptFor(p)}
+            demoIban={demoIban}
+            sandbox={sandbox}
+            notify={notify}
+            busEmit={bus.emit}
+          />
+        );
+      case "rewards":
+        return (
+          <RewardsTab
+            t={t}
+            redemptions={redemptions}
+            setRedemptions={setRedemptions}
+            role={role}
+            utm={utm}
+            onOpenRedeemReceipt={(r) => setRedeemReceipt(r)}
+            sandbox={sandbox}
+            busEmit={bus.emit}
+          />
+        );
+      case "support":
+        return <SupportTab t={t} />;
+      case "profile":
+        return <ProfileTab t={t} kyc={kyc} setKyc={setKyc} notify={notify} />;
+      case "status":
+        return <StatusScreen t={t} />;
+      case "security":
+        return <SecurityPrivacy t={t} />;
+      case "about":
+        return <AboutScreen t={t} />;
+      case "founder":
+        return <FounderScreen t={t} />;
+      default:
+        return null;
     }
-  }, [tab, role, kyc, payments, redemptions, utm, t, demoIban]);
+  }, [tab, role, kyc, payments, redemptions, utm, t, demoIban, sandbox]);
 
   return (
     <div className="min-h-screen bg-[#0b0b0b] text-white" dir={dir}>
       <ToastStack />
+      {sandbox.showInspector ? (
+        <EventInspector
+          events={bus.events}
+          onClear={bus.clear}
+          open={true}
+          setOpen={() => {}}
+        />
+      ) : null}
+
       <header className="sticky top-0 z-[40] h-14 flex items-center justify-between px-3 bg-[#0b0b0bcc] backdrop-saturate-150 backdrop-blur border-b border-white/10">
-        <div className="flex items-center gap-2 font-bold text-emerald-400"><BrandLogo /> RentBack</div>
+        <div className="flex items-center gap-2 font-bold text-emerald-400">
+          <BrandLogo /> RentBack
+        </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setLang((p) => (p === 'en' ? 'ur' : 'en'))}>{t.langNames[lang === 'en' ? 'ur' : 'en']}</Button>
-          <Button variant="outline" onClick={() => setMenuOpen(true)} aria-label="Open menu">☰</Button>
+          <Button
+            variant="outline"
+            onClick={() => setLang((p) => (p === "en" ? "ur" : "en"))}
+          >
+            {t.langNames[lang === "en" ? "ur" : "en"]}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+          >
+            ☰
+          </Button>
         </div>
       </header>
 
       <main className="p-3 pb-24 max-w-xl mx-auto">
-        <div className="mb-2"><SandboxBanner lang={lang} /></div>
+        <div className="mb-2">
+          <SandboxBanner lang={lang} />
+        </div>
         {content}
       </main>
 
       <nav className="fixed left-0 right-0 bottom-0 z-[30] bg-white/5 border-t border-white/10 h-16 grid grid-cols-5 place-items-center">
-        {[{ key: 'home', label: t.nav.home },{ key: 'pay', label: t.nav.pay },{ key: 'rewards', label: t.nav.rewards },{ key: 'support', label: t.nav.support },{ key: 'profile', label: t.nav.profile }].map((it) => (
-          <button key={it.key} onClick={() => setTab(it.key as Tab)} className={cn('h-full w-full flex flex-col items-center justify-center gap-1 font-medium', tab === it.key ? 'text-emerald-400' : 'text-slate-200')}>
+        {[
+          { key: "home", label: t.nav.home },
+          { key: "pay", label: t.nav.pay },
+          { key: "rewards", label: t.nav.rewards },
+          { key: "support", label: t.nav.support },
+          { key: "profile", label: t.nav.profile },
+        ].map((it) => (
+          <button
+            key={it.key}
+            onClick={() => setTab(it.key as Tab)}
+            className={cn(
+              "h-full w-full flex flex-col items-center justify-center gap-1 font-medium",
+              tab === it.key ? "text-emerald-400" : "text-slate-200"
+            )}
+          >
             <span className="text-xs">{it.label}</span>
           </button>
         ))}
       </nav>
 
       {menuOpen ? (
-        <div role="dialog" aria-modal="true" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-[50] bg-black/35 flex justify-end">
-          <div onClick={(e) => e.stopPropagation()} className="w-[320px] max-w-[90%] h-full bg-[#0b0b0b] p-3 flex flex-col gap-2 shadow-2xl border-l border-white/10">
-            <div className="flex items-center justify-between"><div className="font-bold">{t.menu}</div><Button variant="outline" size="sm" onClick={() => setMenuOpen(false)} aria-label="Close">✕</Button></div>
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setMenuOpen(false)}
+          className="fixed inset-0 z-[50] bg-black/35 flex justify-end"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-[320px] max-w-[90%] h-full bg-[#0b0b0b] p-3 flex flex-col gap-2 shadow-2xl border-l border-white/10"
+          >
+            <div className="flex items-center justify-between">
+              <div className="font-bold">{t.menu}</div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Close"
+              >
+                ✕
+              </Button>
+            </div>
+
             <SectionTitle title={t.drawer.explore} />
-            <Row onClick={() => { setTab('status'); setMenuOpen(false); }}>{t.drawer.status}</Row>
-            <Row onClick={() => { setTab('security'); setMenuOpen(false); }}>{t.drawer.security}</Row>
-            <Row onClick={() => { setTab('rewards'); setMenuOpen(false); }}>{t.drawer.rewards}</Row>
-            <Row onClick={() => { setTab('about'); setMenuOpen(false); }}>{t.drawer.about}</Row>
-            <Row onClick={() => { setTab('founder'); setMenuOpen(false); }}>{t.drawer.founder}</Row>
+            <Row
+              onClick={() => {
+                setTab("status");
+                setMenuOpen(false);
+              }}
+            >
+              {t.drawer.status}
+            </Row>
+            <Row
+              onClick={() => {
+                setTab("security");
+                setMenuOpen(false);
+              }}
+            >
+              {t.drawer.security}
+            </Row>
+            <Row
+              onClick={() => {
+                setTab("rewards");
+                setMenuOpen(false);
+              }}
+            >
+              {t.drawer.rewards}
+            </Row>
+            <Row
+              onClick={() => {
+                setTab("about");
+                setMenuOpen(false);
+              }}
+            >
+              {t.drawer.about}
+            </Row>
+            <Row
+              onClick={() => {
+                setTab("founder");
+                setMenuOpen(false);
+              }}
+            >
+              {t.drawer.founder}
+            </Row>
+
             <div className="h-1" />
             <SectionTitle title={t.drawer.role} subtitle={t.drawer.roleHint} />
-            <div className="flex flex_wrap gap-2"><Button variant={role==='tenant'?'default':'outline'} onClick={() => setRole('tenant')}>{t.drawer.tenant}</Button><Button variant={role==='landlord'?'default':'outline'} onClick={() => setRole('landlord')}>{t.drawer.landlord}</Button></div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={role === "tenant" ? "default" : "outline"}
+                onClick={() => setRole("tenant")}
+              >
+                {t.drawer.tenant}
+              </Button>
+              <Button
+                variant={role === "landlord" ? "default" : "outline"}
+                onClick={() => setRole("landlord")}
+              >
+                {t.drawer.landlord}
+              </Button>
+            </div>
+
             <div className="h-1" />
             <SectionTitle title={t.drawer.lang} />
-            <div className="flex gap-2"><Button variant={lang==='en'?'default':'outline'} onClick={() => setLang('en')}>{t.langNames.en}</Button><Button variant={lang==='ur'?'default':'outline'} onClick={() => setLang('ur')}>{t.langNames.ur}</Button></div>
+            <div className="flex gap-2">
+              <Button
+                variant={lang === "en" ? "default" : "outline"}
+                onClick={() => setLang("en")}
+              >
+                {t.langNames.en}
+              </Button>
+              <Button
+                variant={lang === "ur" ? "default" : "outline"}
+                onClick={() => setLang("ur")}
+              >
+                {t.langNames.ur}
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}
 
-      {receiptFor ? <PaymentReceiptModal t={t} payment={receiptFor} onClose={() => setReceiptFor(null)} /> : null}
-      {redeemReceipt ? <RedeemReceiptModal t={t} item={redeemReceipt} onClose={() => setRedeemReceipt(null)} /> : null}
+      {receiptFor ? (
+        <PaymentReceiptModal
+          t={t}
+          payment={receiptFor}
+          onClose={() => setReceiptFor(null)}
+        />
+      ) : null}
+      {redeemReceipt ? (
+        <RedeemReceiptModal
+          t={t}
+          item={redeemReceipt}
+          onClose={() => setRedeemReceipt(null)}
+        />
+      ) : null}
     </div>
   );
 }
