@@ -1,5 +1,4 @@
 // /app/app/layout.tsx
-import React from "react";
 import { getUser } from "@/lib/session";
 import { setActiveRole, switchLang } from "./actions";
 
@@ -10,7 +9,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getUser(); // null never happens because middleware gates
+  const user = await getUser(); // middleware guarantees auth
 
   return (
     <html lang={user?.lang || "en"} dir={user?.lang === "ur" ? "rtl" : "ltr"}>
@@ -20,25 +19,23 @@ export default async function AppLayout({
             <span>🏠</span> RentBack
           </div>
 
-          <form
-            action={switchLang}
-            className="flex items-center gap-2"
-          >
-            <input type="hidden" name="lang" value={user?.lang === "en" ? "ur" : "en"} />
-            <button type="submit" className="border border-white/10 px-2 py-1 rounded text-sm">
+          {/* Language toggle */}
+          <form action={switchLang} className="flex items-center gap-2">
+            <input
+              type="hidden"
+              name="lang"
+              value={user?.lang === "en" ? "ur" : "en"}
+            />
+            <button
+              type="submit"
+              className="border border-white/10 px-2 py-1 rounded text-sm"
+            >
               {user?.lang === "en" ? "اردو" : "English"}
             </button>
           </form>
-          <form action={switchLang}>
-  <input type="hidden" name="lang" value={...} />
-</form>
 
-<form action={setActiveRole}>
-  <select name="role" ... />
-</form>
-
+          {/* Role switcher (only shows roles the user has) */}
           <div className="flex items-center gap-2">
-            {/* Role switcher (only show roles the user has) */}
             <form action={setActiveRole}>
               <select
                 name="role"
@@ -56,11 +53,12 @@ export default async function AppLayout({
           </div>
         </header>
 
-        {/* If KYC <1, show a subtle sticky banner even though middleware forces onboarding */}
+        {/* Subtle hint if KYC < 1 (middleware already sends to onboarding) */}
         {user && user.kycLevel < 1 ? (
           <div className="px-3 pt-2 max-w-xl mx-auto">
             <div className="border border-amber-300/20 bg-amber-300/10 rounded-xl p-3 text-sm">
-              Complete KYC to start payments & rewards. You’ll be redirected to onboarding.
+              Complete KYC to start payments & rewards. You’ll be redirected to
+              onboarding.
             </div>
           </div>
         ) : null}
