@@ -1,6 +1,7 @@
 // app/(auth)/sign-in/page.tsx
 "use client";
-
+// at top
+import BrandLogo from "@/components/BrandLogo";
 import React, { useState } from "react";
 import { loginAction } from "./actions";
 
@@ -19,6 +20,11 @@ export default function SignInPage() {
     <html lang={lang} dir={lang === "ur" ? "rtl" : "ltr"}>
       <body className="min-h-screen bg-[#0b0b0b] text-white">
         {/* Header */}
+        // inside header
+<div className="flex items-center gap-2 font-bold text-emerald-400">
+  <BrandLogo />
+  RentBack
+</div>
         <header className="sticky top-0 z-30 h-14 flex items-center justify-between px-4 border-b border-white/10 bg-[#0b0b0bcc] backdrop-blur">
           <div className="flex items-center gap-2 font-bold text-emerald-400">
             <span className="text-lg">🏠</span> RentBack
