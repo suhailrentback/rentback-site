@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 /**
@@ -1816,7 +1817,7 @@ export default function App() {
     };
   });
 
-  const loggingEnabled = !!(window as any)?.RB_PAYMENTS_ENDPOINT;
+  const loggingEnabled =   typeof window !== "undefined" && !!(window as any).RB_PAYMENTS_ENDPOINT;
 
   // Persist & lang/dir reflect
   useEffect(() => {
