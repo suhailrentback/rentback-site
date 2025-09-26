@@ -1,33 +1,59 @@
-// middleware.ts
+// /middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export const config = {
-  // Run on everything except static assets & metadata routes
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|icon.*|apple-touch-icon.*).*)",
-  ],
-};
+// Very small cookie-based "session" so non-technical founders can test now.
+// In production, replace with real auth/session and JWT or NextAuth.
+function readCookie(req: NextRequest, name: string): string | null {
+  return req.cookies.get(name)?.value ?? null;
+}
 
-export function middleware(req: NextRequest) {
-  const url = req.nextUrl.clone();
-  const host = (req.headers.get("host") || "").toLowerCase().split(":")[0];
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-  // All requests coming to app.rentback.app should see the product UI
-  // We keep the URL pretty ("/") and serve content from "/app" via REWRITE.
-  if (host === "app.rentback.app" || host.startsWith("app.")) {
-    // Pretty root → serve /app
-    if (url.pathname === "/" || url.pathname === "") {
+  // Only care about product area
+  if (!pathname.startsWith("/app")) return NextResponse.next();
+
+  // "Logged in" if rb_auth=1 cookie exists
+  const isAuthed = readCookie(req, "rb_auth") === "1";
+
+  if (!isAuthed) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/";
+    url.searchParams.set("login", "1");
+    return NextResponse.redirect(url);
+  }
+
+  // kycLevel: "0" | "1" | "2"
+  const kycLevel = Number(readCookie(req, "rb_kyc") ?? "0");
+  const needsOnboarding = kycLevel < 1;
+  const isOnboarding = pathname.startsWith("/app/onboarding");
+
+  if (needsOnboarding && !isOnboarding) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/app/onboarding";
+    return NextResponse.redirect(url);
+  }
+
+  if (!needsOnboarding && isOnboarding) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/app";
+    return NextResponse.redirect(url);
+  }
+
+  // Admin gate: only allow admins into /app/admin/*
+  if (pathname.startsWith("/app/admin")) {
+    const roles = (readCookie(req, "rb_roles") ?? "").split(",").filter(Boolean);
+    if (!roles.includes("admin")) {
+      const url = req.nextUrl.clone();
       url.pathname = "/app";
-      return NextResponse.rewrite(url);
-    }
-    // Optional nicety: if someone types /app on the subdomain, redirect to pretty "/"
-    if (url.pathname === "/app") {
-      url.pathname = "/";
       return NextResponse.redirect(url);
     }
   }
 
-  // Everything else (rentback.app) falls through to your landing site.
   return NextResponse.next();
 }
+
+export const config = {
+  matcher: ["/app/:path*"],
+};
