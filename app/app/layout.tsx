@@ -29,6 +29,13 @@ export default async function AppLayout({
               {user?.lang === "en" ? "اردو" : "English"}
             </button>
           </form>
+          <form action={switchLang}>
+  <input type="hidden" name="lang" value={...} />
+</form>
+
+<form action={setActiveRole}>
+  <select name="role" ... />
+</form>
 
           <div className="flex items-center gap-2">
             {/* Role switcher (only show roles the user has) */}
