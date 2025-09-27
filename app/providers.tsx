@@ -1,116 +1,110 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import * as React from "react";
 
-export type Lang = "en" | "ur";
-export type Theme = "light" | "dark" | "system";
+// ---------- Lang Provider ----------
+type Lang = "en" | "ur";
+type LangCtx = { lang: Lang; setLang: (l: Lang) => void };
 
-type LangContextType = {
-  lang: Lang;
-  setLang: (l: Lang) => void;
-  dir: "ltr" | "rtl";
-};
+const LangContext = React.createContext<LangCtx | undefined>(undefined);
 
-type ThemeContextType = {
-  theme: Theme;
-  setTheme: (t: Theme) => void;
-  resolvedTheme: "light" | "dark";
-};
+export function LangProvider({
+  initialLang = "en",
+  children,
+}: {
+  initialLang?: Lang;
+  children: React.ReactNode;
+}) {
+  const [lang, setLang] = React.useState<Lang>(initialLang);
 
-const LangContext = createContext<LangContextType | undefined>(undefined);
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-
-function getInitialLang(): Lang {
-  try {
-    const saved = localStorage.getItem("rb-lang");
-    if (saved === "en" || saved === "ur") return saved;
-  } catch {}
-  return "en";
-}
-
-function getInitialTheme(): Theme {
-  try {
-    const saved = localStorage.getItem("rb-theme");
-    if (saved === "light" || saved === "dark" || saved === "system") return saved;
-  } catch {}
-  return "system";
-}
-
-export function AppProviders({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(getInitialLang);
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
-
-  // Persist + reflect language to <html>
-  const dir: "ltr" | "rtl" = lang === "ur" ? "rtl" : "ltr";
-  useEffect(() => {
-    try {
-      localStorage.setItem("rb-lang", lang);
-    } catch {}
-    if (typeof document !== "undefined") {
-      const html = document.documentElement;
-      html.setAttribute("lang", lang);
-      html.setAttribute("dir", dir);
-    }
-  }, [lang, dir]);
-
-  // Theme resolution (system -> match media)
-  const systemPrefersDark =
-    typeof window !== "undefined" ? window.matchMedia?.("(prefers-color-scheme: dark)").matches : false;
-
-  const resolvedTheme: "light" | "dark" =
-    theme === "system" ? (systemPrefersDark ? "dark" : "light") : theme;
-
-  // Persist + reflect theme to <html> (class "dark"/"light" for Tailwind)
-  useEffect(() => {
-    try {
-      localStorage.setItem("rb-theme", theme);
-    } catch {}
-    if (typeof document !== "undefined") {
-      const html = document.documentElement;
-      html.classList.remove("light", "dark");
-      html.classList.add(resolvedTheme);
-      html.setAttribute("data-theme", resolvedTheme);
-    }
-  }, [theme, resolvedTheme]);
-
-  // React to system changes when in "system" mode
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      if (theme === "system") {
-        const html = document.documentElement;
-        const rt = mq.matches ? "dark" : "light";
-        html.classList.remove("light", "dark");
-        html.classList.add(rt);
-        html.setAttribute("data-theme", rt);
-      }
-    };
-    mq.addEventListener?.("change", onChange);
-    return () => mq.removeEventListener?.("change", onChange);
-  }, [theme]);
-
-  const setLang = (l: Lang) => setLangState(l);
-  const setTheme = (t: Theme) => setThemeState(t);
-
-  const langValue = useMemo(() => ({ lang, setLang, dir }), [lang, dir]);
-  const themeValue = useMemo(() => ({ theme, setTheme, resolvedTheme }), [theme, resolvedTheme]);
+  React.useEffect(() => {
+    // keep <html> correct for a11y + Tailwind RTL
+    const root = document.documentElement;
+    root.setAttribute("lang", lang);
+    root.setAttribute("dir", lang === "ur" ? "rtl" : "ltr");
+  }, [lang]);
 
   return (
-    <LangContext.Provider value={langValue}>
-      <ThemeContext.Provider value={themeValue}>{children}</ThemeContext.Provider>
+    <LangContext.Provider value={{ lang, setLang }}>
+      {children}
     </LangContext.Provider>
   );
 }
 
 export function useLang() {
-  const ctx = useContext(LangContext);
-  if (!ctx) throw new Error("useLang must be used within <AppProviders>");
+  const ctx = React.useContext(LangContext);
+  if (!ctx) throw new Error("useLang must be used within LangProvider");
   return ctx;
 }
 
-export function useThemeRB() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error("useThemeRB must be used within <AppProviders>");
+// ---------- Theme Provider ----------
+type Theme = "light" | "dark";
+type ThemeCtx = { theme: Theme; setTheme: (t: Theme) => void };
+
+const ThemeContext = React.createContext<ThemeCtx | undefined>(undefined);
+
+function readCookie(name: string) {
+  if (typeof document === "undefined") return undefined;
+  const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return m ? decodeURIComponent(m[1]) : undefined;
+}
+function writeCookie(name: string, value: string, days = 365) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  document.cookie = `${name}=${encodeURIComponent(
+    value
+  )}; path=/; expires=${d.toUTCString()}`;
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setThemeState] = React.useState<Theme>(() => {
+    // 1) cookie
+    const c = readCookie("rb-theme");
+    if (c === "light" || c === "dark") return c;
+    // 2) system
+    if (typeof window !== "undefined" && window.matchMedia) {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    }
+    return "light";
+  });
+
+  const setTheme = React.useCallback((t: Theme) => {
+    setThemeState(t);
+    writeCookie("rb-theme", t);
+  }, []);
+
+  React.useEffect(() => {
+    // Toggle `.dark` on <html> for Tailwind’s dark mode classes
+    const root = document.documentElement;
+    if (theme === "dark") root.classList.add("dark");
+    else root.classList.remove("dark");
+  }, [theme]);
+
+  const value = React.useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
+
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
+}
+
+export function useTheme() {
+  const ctx = React.useContext(ThemeContext);
+  if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
   return ctx;
+}
+
+// (Optional) small helper components if you want quick toggles later
+export function ThemeToggleButton() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className="border px-2 py-1 rounded text-sm"
+    >
+      {theme === "dark" ? "Light" : "Dark"}
+    </button>
+  );
 }
