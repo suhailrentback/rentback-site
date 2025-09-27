@@ -1,8 +1,6 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 export type Role = "tenant" | "landlord" | "admin";
-export type Lang = "en" | "ur";
 export type KycLevel = 0 | 1 | 2;
 
 export type User = {
@@ -10,49 +8,27 @@ export type User = {
   roles: Role[];
   activeRole: Role;
   kycLevel: KycLevel;
-  lang: Lang;
-  fullName?: string;
+  lang: "en" | "ur";
+  name?: string;
 };
 
-const COOKIE_NAME = "rb_session";
-
-function parseCookie(): User | null {
+export async function getUserOrNull(): Promise<User | null> {
   try {
-    const c = cookies().get(COOKIE_NAME)?.value;
-    if (!c) return null;
-    const data = JSON.parse(Buffer.from(c, "base64").toString("utf8")) as User;
-    if (!data?.activeRole || !Array.isArray(data.roles)) return null;
-    return data;
+    const raw = cookies().get("rb_session")?.value;
+    if (!raw) return null;
+
+    const data = JSON.parse(raw);
+
+    // Minimal validation + defaults (prevents redirect loops)
+    const roles = (Array.isArray(data.roles) && data.roles.length ? data.roles : ["tenant"]) as Role[];
+    const activeRole: Role = (["tenant","landlord","admin"].includes(data.activeRole) ? data.activeRole : roles[0]) as Role;
+    const kycLevel: KycLevel = ([0,1,2].includes(data.kycLevel) ? data.kycLevel : 0) as KycLevel;
+    const lang: "en" | "ur" = (data.lang === "ur" ? "ur" : "en");
+    const id = typeof data.id === "string" ? data.id : "anon";
+    const name = typeof data.name === "string" ? data.name : undefined;
+
+    return { id, roles, activeRole, kycLevel, lang, name };
   } catch {
     return null;
   }
-}
-
-function writeCookie(user: User) {
-  const payload = Buffer.from(JSON.stringify(user), "utf8").toString("base64");
-  cookies().set({
-    name: COOKIE_NAME,
-    value: payload,
-    httpOnly: true,
-    path: "/",
-    sameSite: "lax",
-  });
-}
-
-export async function getUser(): Promise<User | null> {
-  return parseCookie();
-}
-
-export async function requireUser(): Promise<User> {
-  const u = parseCookie();
-  if (!u) redirect("/sign-in");
-  return u!;
-}
-
-export async function setSession(user: User): Promise<void> {
-  writeCookie(user);
-}
-
-export async function clearSession(): Promise<void> {
-  cookies().delete(COOKIE_NAME);
 }
