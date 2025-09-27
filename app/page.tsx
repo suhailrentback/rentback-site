@@ -1,220 +1,155 @@
 // app/page.tsx
-"use client";
+import React from "react";
+import Logo from "@/components/Logo";
 
-import Link from "next/link";
-import { useState } from "react";
-import BrandLogo from "@/components/BrandLogo";
-
-export const dynamic = "force-dynamic";
+export const metadata = {
+  title: "RentBack — Pay rent, earn rewards",
+  description: "Pakistan-focused rent payments with rewards.",
+};
 
 export default function LandingPage() {
-  const [lang, setLang] = useState<"en" | "ur">("en");
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const isLight = theme === "light";
-
-  const t = {
-    en: {
-      title: "Turn rent into rewards.",
-      blurb:
-        "Pay rent simply (Raast, bank transfer, cards, wallets) and earn Pakistan-focused perks. Landlords get transparent incoming payments, statements, and faster reconciliations.",
-      getStarted: "Get started",
-      how: "How it works",
-      signIn: "Sign in",
-      built: "Built for Pakistan • EN/UR + RTL • Demo sandbox available",
-      props: [
-        {
-          t: "Pay rent, earn rewards",
-          d: "Raast, bank transfer, card, wallets — you choose. Earn points on eligible payments.",
-        },
-        {
-          t: "Landlord visibility",
-          d: "See incoming and outstanding payments with simple reconciliation and statements.",
-        },
-        {
-          t: "SBP sandbox ready",
-          d: "KYC-first flows, data minimization, and an audit-friendly ledger from day one.",
-        },
-      ],
-    },
-    ur: {
-      title: "کرایہ انعامات میں بدلیں۔",
-      blurb:
-        "راست، بینک ٹرانسفر، کارڈز، یا والٹ سے آسان ادائیگی — اور پاکستان کے لیے منتخب انعامات حاصل کریں۔ مالکان کو آمدنی کی شفاف جھلک، اسٹیٹمنٹس، اور تیز ریکنسیلی ایشن ملتی ہے۔",
-      getStarted: "شروع کریں",
-      how: "کیسے کام کرتا ہے",
-      signIn: "سائن اِن",
-      built: "پاکستان کے لیے • EN/UR + RTL • ڈیمو سینڈ باکس",
-      props: [
-        {
-          t: "کرایہ ادا کریں، انعامات پائیں",
-          d: "راست، بینک ٹرانسفر، کارڈ، والٹ — آپ کی پسند۔ اہل ادائیگیوں پر پوائنٹس کمائیں۔",
-        },
-        {
-          t: "مالک کے لیے وضاحت",
-          d: "آنے والی اور بقیہ ادائیگیاں دیکھیں، سادہ ریکنسیلی ایشن اور اسٹیٹمنٹس کے ساتھ۔",
-        },
-        {
-          t: "SBP سینڈ باکس تیار",
-          d: "KYC-فرسٹ فلو، کم از کم ڈیٹا، اور آڈٹ فرینڈلی لیجر شروع دن سے۔",
-        },
-      ],
-    },
-  } as const;
-
   return (
-    <html lang={lang} dir={lang === "ur" ? "rtl" : "ltr"}>
-      <body
-        className={
-          isLight ? "min-h-screen bg-white text-slate-900" : "min-h-screen bg-[#0b0b0b] text-white"
-        }
-      >
-        {/* Header */}
-        <header
-          className={
-            "sticky top-0 z-30 h-14 flex items-center justify-between px-4 border-b " +
-            (isLight ? "bg-white/85 backdrop-blur border-slate-200" : "bg-[#0b0b0bcc] backdrop-blur border-white/10")
-          }
-        >
-          <div className="flex items-center gap-2 font-bold">
-            <BrandLogo stroke={isLight ? "#059669" : "#34d399"} />
-            <span className={isLight ? "text-emerald-600" : "text-emerald-400"}>
-              RentBack
-            </span>
-          </div>
-          <nav className="flex items-center gap-2">
-            <button
-              onClick={() => setLang((p) => (p === "en" ? "ur" : "en"))}
-              className={
-                "px-3 py-1.5 rounded-lg text-sm border " +
-                (isLight ? "border-slate-200 hover:bg-slate-50" : "border-white/10 hover:bg-white/5")
-              }
-            >
-              {lang === "en" ? "اردو" : "English"}
-            </button>
-            <button
-              onClick={() => setTheme((p) => (p === "dark" ? "light" : "dark"))}
-              className={
-                "px-3 py-1.5 rounded-lg text-sm border " +
-                (isLight ? "border-slate-200 hover:bg-slate-50" : "border-white/10 hover:bg-white/5")
-              }
-            >
-              {isLight ? "🌙 Dark" : "☀️ Light"}
-            </button>
-            <Link
-              href="/sign-in"
-              className={
-                "px-3 py-1.5 rounded-lg text-sm " +
-                (isLight
-                  ? "border border-slate-200 hover:bg-slate-50"
-                  : "border border-white/10 hover:bg-white/5")
-              }
-            >
-              {t[lang].signIn}
-            </Link>
-            <Link
-              href="/sign-in"
-              className={
-                "px-3 py-1.5 rounded-lg text-sm " +
-                (isLight ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-emerald-600 hover:bg-emerald-700")
-              }
-            >
-              {t[lang].getStarted}
-            </Link>
-          </nav>
-        </header>
+    <div className="min-h-screen bg-white text-black dark:bg-[#0b0b0b] dark:text-white">
+      {/* Header */}
+      <header className="sticky top-0 z-[40] h-14 flex items-center justify-between px-4 border-b border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0b0b0b]/80 backdrop-blur">
+        <div className="flex items-center gap-2">
+          <Logo label="RentBack" />
+        </div>
+        <nav className="hidden sm:flex items-center gap-4 text-sm opacity-80">
+          <a href="#features" className="hover:opacity-100">Features</a>
+          <a href="#how" className="hover:opacity-100">How it works</a>
+          <a href="#faq" className="hover:opacity-100">FAQ</a>
+          <a
+            href="/sign-in"
+            className="inline-flex items-center rounded-lg px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            Sign in
+          </a>
+        </nav>
+      </header>
 
+      {/* Main */}
+      <main className="max-w-6xl mx-auto px-4">
         {/* Hero */}
-        <main className="max-w-5xl mx-auto px-4">
-          <section className="py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
+        <section className="py-14 md:py-20">
+          <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
-              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.1]">
-                {t[lang].title}
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+                Pay rent, earn rewards.
               </h1>
-              <p className="mt-4 text-base md:text-lg opacity-90">
-                {t[lang].blurb}
+              <p className="mt-4 text-base md:text-lg opacity-80">
+                RentBack helps tenants pay rent easily and earn perks with
+                Pakistani brands — while landlords get clear visibility on
+                incoming payments and receipts.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/sign-in"
-                  className={
-                    "px-4 py-2 rounded-xl font-semibold " +
-                    (isLight
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                      : "bg-emerald-600 hover:bg-emerald-700")
-                  }
-                >
-                  {t[lang].getStarted}
-                </Link>
+              <div className="mt-8 flex gap-3">
                 <a
-                  href="#how-it-works"
-                  className={
-                    "px-4 py-2 rounded-xl font-semibold " +
-                    (isLight
-                      ? "border border-slate-200 hover:bg-slate-50"
-                      : "border border-white/10 hover:bg-white/5")
-                  }
+                  href="/sign-in"
+                  className="inline-flex items-center justify-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
                 >
-                  {t[lang].how}
+                  Sign in
+                </a>
+                <a
+                  href="#features"
+                  className="inline-flex items-center justify-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                >
+                  Learn more
                 </a>
               </div>
-              <div className="mt-4 text-xs opacity-70">{t[lang].built}</div>
+              <div className="mt-4 text-xs opacity-70">
+                Demo preview — no real payments processed.
+              </div>
             </div>
 
-            {/* Card mock with old logo */}
-            <div className="relative w-full max-w-[460px] h-[260px] rounded-2xl overflow-hidden border shadow-[0_20px_60px_rgba(5,150,105,0.20)] mx-auto rb-animated-bg"
-                 style={{ borderColor: isLight ? "rgb(226 232 240)" : "rgba(255,255,255,0.1)" }}>
-              <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent" />
-              <div className="absolute inset-0 p-5 flex flex-col">
-                <div className="flex items-center justify-between">
-                  <div className="font-bold text-slate-900 flex items-center gap-2">
-                    <BrandLogo stroke="#0f172a" />
-                    RentBack
-                  </div>
-                  <span className="text-[12px] text-slate-900/90">
-                    VIRTUAL • Debit
-                  </span>
-                </div>
-                <div className="mt-auto font-mono tracking-wider">
-                  <div className="text-[20px] font-semibold text-slate-900">
-                    **** **** **** 0007
-                  </div>
-                  <div className="flex gap-5 mt-1 text-[12px] text-slate-900">
-                    <span>Exp 12/27</span>
-                    <span>PKR</span>
-                  </div>
+            {/* Visual card */}
+            <div className="relative">
+              <div className="absolute -inset-6 rounded-3xl bg-gradient-to-tr from-emerald-500/20 via-teal-400/10 to-transparent blur-xl" />
+              <div className="relative rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-6 shadow-[0_12px_40px_rgba(16,185,129,0.18)]">
+                <div className="text-sm opacity-80">Virtual Card • PKR</div>
+                <div className="mt-4 font-mono text-xl tracking-wider">**** **** **** 0007</div>
+                <div className="mt-1 text-xs opacity-70">Exp 12/27 • RentBack</div>
+                <div className="mt-6 grid grid-cols-3 gap-3">
+                  {["Pay", "Rewards", "Receipts"].map((t) => (
+                    <div
+                      key={t}
+                      className="rounded-xl border border-black/10 dark:border-white/10 p-3 text-center text-sm"
+                    >
+                      {t}
+                    </div>
+                  ))}
                 </div>
               </div>
-              <style>{`@keyframes rb-grad{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-              .rb-animated-bg{background:linear-gradient(120deg,#059669,#14b8a6,#34d399);background-size:200% 200%;animation:rb-grad 12s ease infinite}`}</style>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Value props */}
-          <section id="how-it-works" className="py-12 grid md:grid-cols-3 gap-4">
-            {t[lang].props.map((x) => (
-              <div
-                key={x.t}
-                className={
-                  "rounded-2xl p-4 border " +
-                  (isLight ? "bg-white border-slate-200" : "bg-white/5 border-white/10")
-                }
-              >
-                <div className="font-semibold">{x.t}</div>
-                <div className="text-sm opacity-80 mt-1">{x.d}</div>
+        {/* Features */}
+        <section id="features" className="py-12">
+          <h2 className="text-2xl font-bold mb-6">Why RentBack</h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+              <div className="font-semibold mb-1">Fast payments</div>
+              <div className="text-sm opacity-80">Bank transfer, card, or wallet.</div>
+            </div>
+            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+              <div className="font-semibold mb-1">Rewards</div>
+              <div className="text-sm opacity-80">Redeem perks with Pakistani brands.</div>
+            </div>
+            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+              <div className="font-semibold mb-1">Landlord visibility</div>
+              <div className="text-sm opacity-80">Clear view of incoming rent and receipts.</div>
+            </div>
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section id="how" className="py-12">
+          <h2 className="text-2xl font-bold mb-6">How it works</h2>
+          <ol className="grid md:grid-cols-3 gap-4 list-decimal pl-5">
+            <li className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+              Create an account and verify KYC.
+            </li>
+            <li className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+              Pay rent via bank transfer, card, or wallet.
+            </li>
+            <li className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+              Earn and redeem rewards; download receipts anytime.
+            </li>
+          </ol>
+        </section>
+
+        {/* FAQ */}
+        <section id="faq" className="py-12">
+          <h2 className="text-2xl font-bold mb-6">FAQ</h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+              <div className="font-semibold mb-1">Is this live?</div>
+              <div className="text-sm opacity-80">This is a demo preview — no real payments.</div>
+            </div>
+            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+              <div className="font-semibold mb-1">Where do I sign in?</div>
+              <div className="text-sm opacity-80">
+                Use the Sign in button in the header to access the app.
               </div>
-            ))}
-          </section>
-        </main>
+            </div>
+          </div>
+        </section>
+      </main>
 
-        <footer
-          className={
-            "mt-10 py-6 text-center text-sm " +
-            (isLight ? "border-t border-slate-200 text-slate-600" : "border-t border-white/10 text-slate-400")
-          }
-        >
-          © {new Date().getFullYear()} RentBack — All rights reserved.
-        </footer>
-      </body>
-    </html>
+      {/* Footer */}
+      <footer className="px-4 py-10 border-t border-black/10 dark:border-white/10">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Logo label="RentBack" />
+            <span className="text-xs opacity-70">© {new Date().getFullYear()}</span>
+          </div>
+          <div className="text-xs opacity-70 flex gap-4">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="mailto:help@rentback.app">help@rentback.app</a>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
