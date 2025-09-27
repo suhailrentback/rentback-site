@@ -1,91 +1,82 @@
 // app/(auth)/sign-in/page.tsx
-"use client";
+import React from "react";
+import { signInAndRedirect } from "./actions";
+import Logo from "@/components/Logo";
 
-import { useState } from "react";
+export const dynamic = "force-static"; // sign-in can be static
 
 export default function SignInPage() {
-  const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
-
   return (
-    <main className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-white">
-      <section className="max-w-6xl mx-auto px-6 pt-16 pb-10">
-        <div className="grid lg:grid-cols-2 gap-10 items-center">
-          {/* Left: copy */}
-          <div>
-            <a href="/" className="inline-flex items-center gap-2 text-sm opacity-70 hover:opacity-100">
-              ← Back to home
-            </a>
-            <h1 className="mt-4 text-3xl md:text-4xl font-extrabold leading-tight">
-              Welcome back to <span className="text-emerald-600">RentBack</span>
-            </h1>
-            <p className="mt-3 text-neutral-600 dark:text-neutral-300">
-              Sign in to pay rent, earn rewards, and manage your account.
-            </p>
-
-            {/* Brand strip */}
-            <div className="mt-6 h-2 rounded-full rb-grad" />
-          </div>
-
-          {/* Right: form card */}
-          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-xl max-w-md w-full ml-auto">
-            <form
-              className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                window.location.href = "/app"; // wire to your real auth later
-              }}
-            >
-              <div>
-                <label className="text-sm font-medium">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2 outline-none"
-                  placeholder="you@domain.com"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={pass}
-                  onChange={(e) => setPass(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2 outline-none"
-                  placeholder="••••••••"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 font-semibold"
-              >
-                Sign in
-              </button>
-              <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                By continuing you agree to our{" "}
-                <a className="underline" href="/terms">Terms</a> and{" "}
-                <a className="underline" href="/privacy">Privacy Policy</a>.
-              </div>
-            </form>
-          </div>
+    <div className="min-h-screen bg-white text-black dark:bg-[#0b0b0b] dark:text-white">
+      <header className="h-14 flex items-center justify-between px-4 border-b border-black/10 dark:border-white/10">
+        <div className="flex items-center gap-2">
+          <Logo label="RentBack" />
         </div>
-      </section>
+        <a
+          href="/"
+          className="text-sm opacity-80 hover:opacity-100"
+        >
+          Back to home
+        </a>
+      </header>
 
-      <style>{`
-        @keyframes rbShift { 
-          0%{background-position:0% 50%} 
-          50%{background-position:100% 50%} 
-          100%{background-position:0% 50%} 
-        }
-        .rb-grad {
-          background: linear-gradient(120deg, #059669, #14b8a6, #34d399);
-          background-size: 200% 200%;
-          animation: rbShift 12s ease infinite;
-        }
-      `}</style>
-    </main>
+      <main className="max-w-md mx-auto px-4 py-10">
+        <div className="rounded-2xl border border-black/10 dark:border-white/10 p-6">
+          <h1 className="text-xl font-semibold">Sign in</h1>
+          <p className="text-sm opacity-80 mt-1">
+            Demo login for development. No real authentication yet.
+          </p>
+
+          <form action={signInAndRedirect} className="mt-6 space-y-5">
+            {/* Role */}
+            <div>
+              <label className="text-sm font-medium">Choose your role</label>
+              <select
+                name="role"
+                className="mt-2 w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
+                defaultValue="tenant"
+              >
+                <option value="tenant">Tenant</option>
+                <option value="landlord">Landlord</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            {/* Language */}
+            <div>
+              <label className="text-sm font-medium">Language</label>
+              <select
+                name="lang"
+                className="mt-2 w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
+                defaultValue="en"
+              >
+                <option value="en">English</option>
+                <option value="ur">اردو</option>
+              </select>
+            </div>
+
+            {/* KYC */}
+            <div className="flex items-center gap-2">
+              <input id="kycDone" name="kycDone" type="checkbox" className="size-4" />
+              <label htmlFor="kycDone" className="text-sm">
+                I have completed basic KYC (skip onboarding)
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              Continue
+            </button>
+
+            <p className="text-xs opacity-70">
+              You will be redirected to onboarding if KYC isn’t completed, or to your role’s
+              dashboard if it is.
+            </p>
+          </form>
+        </div>
+      </main>
+    </div>
   );
 }
