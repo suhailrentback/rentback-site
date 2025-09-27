@@ -1,68 +1,53 @@
 // app/(auth)/sign-in/page.tsx
+export const dynamic = "force-static";
+
 import React from "react";
 import Logo from "@/components/Logo";
-import { signInAction } from "./actions"; // keep your existing action export
-
-export const dynamic = "force-static";
+import { signInAction } from "./actions";
 
 export default function SignInPage() {
   return (
     <div className="min-h-screen bg-white text-black dark:bg-[#0b0b0b] dark:text-white">
-      <header className="h-14 flex items-center justify-between px-4 border-b border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0b0b0b]/80 backdrop-blur sticky top-0">
-        <div className="flex items-center gap-2">
-          <Logo label="RentBack" />
-        </div>
-        <a
-          href="/"
-          className="text-xs border border-black/10 dark:border-white/20 rounded px-2 py-1"
-        >
-          Back to Home
-        </a>
+      <header className="h-14 flex items-center justify-between px-4 border-b border-black/10 dark:border-white/10">
+        <Logo label="RentBack" />
       </header>
 
-      <main className="max-w-xl mx-auto px-4 py-10">
-        <div className="relative">
-          <div className="absolute -inset-6 rounded-3xl bg-gradient-to-tr from-emerald-500/20 via-teal-400/10 to-transparent blur-xl" />
-          <div className="relative rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-6">
-            <h1 className="text-2xl font-bold mb-1">Sign in</h1>
-            <p className="text-sm opacity-80 mb-6">Choose your role to continue.</p>
+      <main className="max-w-md mx-auto px-4 py-10">
+        <h1 className="text-2xl font-semibold mb-2">Sign in</h1>
+        <p className="text-sm opacity-75 mb-6">
+          Choose your role to enter the demo dashboards.
+        </p>
 
-            <form action={signInAction} className="grid gap-4">
-              <div>
-                <label className="text-sm font-medium">Role</label>
-                <select
-                  name="role"
-                  defaultValue="tenant"
-                  className="mt-1 w-full bg-transparent border border-black/10 dark:border-white/20 rounded-lg px-3 py-2"
-                >
-                  <option value="tenant">tenant</option>
-                  <option value="landlord">landlord</option>
-                  <option value="admin">admin</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Full name (optional)</label>
-                <input
-                  name="fullName"
-                  placeholder="Your name"
-                  className="mt-1 w-full bg-transparent border border-black/10 dark:border-white/20 rounded-lg px-3 py-2"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
-              >
-                Continue
-              </button>
-
-              <div className="text-xs opacity-70">
-                Demo preview — no real authentication or payments.
-              </div>
-            </form>
+        <form action={signInAction} className="space-y-4">
+          <div>
+            <label className="text-sm block mb-1">Full name (optional)</label>
+            <input
+              name="fullName"
+              className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
+              placeholder="e.g. Ali Khan"
+            />
           </div>
-        </div>
+
+          <div>
+            <label className="text-sm block mb-1">Role</label>
+            <select
+              name="role"
+              defaultValue="tenant"
+              className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
+            >
+              <option value="tenant">Tenant</option>
+              <option value="landlord">Landlord</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full rounded-xl px-4 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            Continue
+          </button>
+        </form>
       </main>
     </div>
   );
