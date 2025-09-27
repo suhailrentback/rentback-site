@@ -1,27 +1,23 @@
-// middleware.ts
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
-/**
- * Redirect any /app/* request to /app/onboarding if KYC < 1.
- * We store KYC as a lightweight cookie "rb_kyc" ("0" or "1") via a server action.
- */
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  // Only guard the in-app area. Your repo uses /app/app/* for the product.
+  const isAppArea = pathname.startsWith("/app/app");
 
-  // Only guard /app/* routes
-  if (!pathname.startsWith("/app")) return NextResponse.next();
+  if (!isAppArea) return NextResponse.next();
 
-  // Allow the onboarding route itself
-  if (pathname.startsWith("/app/onboarding")) return NextResponse.next();
+  // Skip guard on onboarding page itself
+  const isOnboarding = pathname.startsWith("/app/app/onboarding");
+  if (isOnboarding) return NextResponse.next();
 
-  // Read KYC cookie (set by completeBasicKycAction)
-  const kycCookie = req.cookies.get("rb_kyc")?.value ?? "0";
-  const kycLevel = Number(kycCookie) || 0;
-
-  if (kycLevel < 1) {
+  // Demo KYC check via cookie
+  const kyc = req.cookies.get("rb-kyc")?.value;
+  if (kyc !== "1") {
     const url = req.nextUrl.clone();
-    url.pathname = "/app/onboarding";
+    url.pathname = "/app/app/onboarding";
+    // Optional: carry return URL
+    url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
@@ -29,5 +25,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/app/:path*"],
+  matcher: [
+    "/app/app/:path*",
+  ],
 };
