@@ -9,7 +9,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         <div className="flex items-center gap-2">
           <Logo label="RentBack" />
         </div>
-        {/* No theme/lang toggles here on purpose */}
+        {/* No toggles here */}
       </header>
       <main>{children}</main>
     </div>
