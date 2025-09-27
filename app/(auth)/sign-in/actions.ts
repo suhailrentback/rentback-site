@@ -4,29 +4,39 @@
 import { redirect } from "next/navigation";
 import { devLogin } from "@/lib/session";
 
-export async function loginAction(formData: FormData) {
-  // Collect roles from checkboxes
-  const roles = formData.getAll("roles").map(String) as Array<
-    "tenant" | "landlord" | "admin"
-  >;
-  const lang = (formData.get("lang") as "en" | "ur") || "en";
+type Role = "tenant" | "landlord" | "admin";
+type Lang = "en" | "ur";
 
-  // Ensure a mutable array
-  const selected: Array<"tenant" | "landlord" | "admin"> =
-    roles.length ? [...roles] : ["tenant"];
+// Where each role lands post-login
+function homeForRole(role: Role): string {
+  switch (role) {
+    case "admin":
+      return "/app/admin";
+    case "landlord":
+      return "/app/landlord";
+    default:
+      return "/app/tenant";
+  }
+}
 
-  const activeRole = (selected.includes("tenant") ? "tenant" : selected[0]) as
-    | "tenant"
-    | "landlord"
-    | "admin";
+export async function signInAndRedirect(formData: FormData) {
+  const role = (formData.get("role") as Role) || "tenant";
+  const lang = (formData.get("lang") as Lang) || "en";
+  const kycDone = formData.get("kycDone") === "on";
 
-  // Start at KYC Level 0 → onboarding will bump to 1
+  // Create the session for this user
   await devLogin({
-    roles: selected,      // <-- now mutable, type-safe
-    activeRole,
-    kycLevel: 0,
+    roles: [role],
+    activeRole: role,
+    kycLevel: kycDone ? 1 : 0,
     lang,
   });
 
-  redirect("/app/onboarding");
+  // If KYC isn’t done, send them to onboarding
+  if (!kycDone) {
+    redirect("/app/onboarding");
+  }
+
+  // Otherwise, go to the role’s home
+  redirect(homeForRole(role));
 }
