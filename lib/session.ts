@@ -15,6 +15,7 @@ export type User = {
 
 const KEY = "rb_user";
 
+// --- core helpers ---
 export function readUser(): User | null {
   try {
     const v = cookies().get(KEY)?.value;
@@ -36,7 +37,7 @@ export function readUser(): User | null {
 
 export function writeUser(u: User) {
   cookies().set(KEY, JSON.stringify(u), {
-    httpOnly: false, // demo only; flip to true with real auth
+    httpOnly: false, // demo only; set true when you move to real auth
     sameSite: "lax",
     secure: true,
     path: "/",
@@ -46,4 +47,10 @@ export function writeUser(u: User) {
 
 export function clearUser() {
   cookies().delete(KEY);
+}
+
+// --- compatibility shim ---
+// Many pages still `import { getUser } from "@/lib/session"` and sometimes `await getUser()`.
+export async function getUser(): Promise<User | null> {
+  return readUser();
 }
