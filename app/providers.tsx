@@ -2,9 +2,14 @@
 
 import * as React from "react";
 
-// ---------- Lang Provider ----------
-type Lang = "en" | "ur";
-type LangCtx = { lang: Lang; setLang: (l: Lang) => void };
+/* ===================== Language ===================== */
+
+export type Lang = "en" | "ur";
+type LangCtx = {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  dir: "ltr" | "rtl";
+};
 
 const LangContext = React.createContext<LangCtx | undefined>(undefined);
 
@@ -18,26 +23,28 @@ export function LangProvider({
   const [lang, setLang] = React.useState<Lang>(initialLang);
 
   React.useEffect(() => {
-    // keep <html> correct for a11y + Tailwind RTL
     const root = document.documentElement;
+    const dir: "ltr" | "rtl" = lang === "ur" ? "rtl" : "ltr";
     root.setAttribute("lang", lang);
-    root.setAttribute("dir", lang === "ur" ? "rtl" : "ltr");
+    root.setAttribute("dir", dir);
   }, [lang]);
 
-  return (
-    <LangContext.Provider value={{ lang, setLang }}>
-      {children}
-    </LangContext.Provider>
+  const value = React.useMemo<LangCtx>(
+    () => ({ lang, setLang, dir: lang === "ur" ? "rtl" : "ltr" }),
+    [lang]
   );
+
+  return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
 }
 
 export function useLang() {
   const ctx = React.useContext(LangContext);
   if (!ctx) throw new Error("useLang must be used within LangProvider");
-  return ctx;
+  return ctx; // { lang, setLang, dir }
 }
 
-// ---------- Theme Provider ----------
+/* ===================== Theme ===================== */
+
 type Theme = "light" | "dark";
 type ThemeCtx = { theme: Theme; setTheme: (t: Theme) => void };
 
@@ -58,10 +65,8 @@ function writeCookie(name: string, value: string, days = 365) {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = React.useState<Theme>(() => {
-    // 1) cookie
     const c = readCookie("rb-theme");
     if (c === "light" || c === "dark") return c;
-    // 2) system
     if (typeof window !== "undefined" && window.matchMedia) {
       return window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
@@ -76,7 +81,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
-    // Toggle `.dark` on <html> for Tailwind’s dark mode classes
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
@@ -95,16 +99,23 @@ export function useTheme() {
   return ctx;
 }
 
-// (Optional) small helper components if you want quick toggles later
-export function ThemeToggleButton() {
-  const { theme, setTheme } = useTheme();
+/* Back-compat alias for components/ThemeToggle.tsx */
+export function useThemeRB() {
+  return useTheme();
+}
+
+/* ===================== AppProviders Wrapper ===================== */
+
+export function AppProviders({
+  initialLang = "en",
+  children,
+}: {
+  initialLang?: Lang;
+  children: React.ReactNode;
+}) {
   return (
-    <button
-      type="button"
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="border px-2 py-1 rounded text-sm"
-    >
-      {theme === "dark" ? "Light" : "Dark"}
-    </button>
+    <ThemeProvider>
+      <LangProvider initialLang={initialLang}>{children}</LangProvider>
+    </ThemeProvider>
   );
 }
