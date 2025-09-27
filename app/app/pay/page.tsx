@@ -1,21 +1,8 @@
 "use client";
 
-import * as React from "react";
-import Logo from "@/components/Logo";
+import React from "react";
 import KycGate from "@/components/KycGate";
-// import PayScreen from "@/components/PayScreen";
-
-function PayStub() {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="font-semibold mb-2">Pay Rent</div>
-      <div className="text-sm opacity-80">
-        This is a placeholder payment form. Replace with your PayScreen
-        component.
-      </div>
-    </div>
-  );
-}
+import Logo from "@/components/Logo";
 
 export default function PayPage() {
   return (
@@ -26,8 +13,13 @@ export default function PayPage() {
       </div>
 
       <KycGate>
-        {/* Replace <PayStub /> with <PayScreen /> when ready */}
-        <PayStub />
+        {/* Your real Pay UI goes here. Keep it minimal for now. */}
+        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-4">
+          <div className="font-semibold mb-2">Pay rent</div>
+          <p className="text-sm opacity-80">
+            Bank transfer, Card, or Wallet. (Demo UI — replace with live flow later)
+          </p>
+        </div>
       </KycGate>
     </div>
   );
