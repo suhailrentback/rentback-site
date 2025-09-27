@@ -1,34 +1,38 @@
-// app/app/admin/layout.tsx
+// /app/app/admin/layout.tsx
 import React from "react";
-import { redirect } from "next/navigation";
-import { getUser } from "@/lib/session";
 import Logo from "@/components/Logo";
+import { getUserOrNull } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const user = await getUser(); // assumes middleware ensures signed-in
-  // Guard: only allow users whose activeRole is 'admin'
-  if (!user || user.activeRole !== "admin") {
-    redirect("/app"); // bounce non-admins back to app home
-  }
+  const user = await getUserOrNull(); // can be null
+
+  const isAdmin = !!user?.roles?.includes("admin");
 
   return (
-    <div className="max-w-5xl mx-auto px-3">
-      {/* Header */}
-      <header className="sticky top-0 z-[40] h-14 flex items-center justify-between border-b border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0b0b0b]/80 backdrop-blur px-2">
-        <div className="flex items-center gap-2">
-          <Logo label="RentBack — Admin" />
-        </div>
-        <nav className="flex items-center gap-2 text-sm">
-          <a href="/app/admin" className="px-3 py-1.5 rounded hover:bg-black/[0.05] dark:hover:bg-white/[0.06]">Overview</a>
-          <a href="/app/admin/kyc" className="px-3 py-1.5 rounded hover:bg-black/[0.05] dark:hover:bg-white/[0.06]">KYC</a>
-          <a href="/app/admin/payments" className="px-3 py-1.5 rounded hover:bg-black/[0.05] dark:hover:bg-white/[0.06]">Payments</a>
-          <a href="/app/admin/rewards" className="px-3 py-1.5 rounded hover:bg-black/[0.05] dark:hover:bg-white/[0.06]">Rewards</a>
-        </nav>
-      </header>
+    <html lang={user?.lang ?? "en"} dir={(user?.lang ?? "en") === "ur" ? "rtl" : "ltr"} suppressHydrationWarning>
+      <body className="min-h-screen">
+        <header className="sticky top-0 z-40 h-14 flex items-center justify-between px-3 bg-white/80 dark:bg-[#0b0b0b]/80 border-b border-black/10 dark:border-white/10 backdrop-blur">
+          <div className="flex items-center gap-2">
+            <Logo label="RentBack" />
+            <span className="text-xs opacity-70">Admin</span>
+          </div>
+          <div className="text-xs opacity-80">
+            {user ? `${user.name || "User"} • ${user.activeRole} • KYC ${user.kycLevel}` : "Guest"}
+          </div>
+        </header>
 
-      <main className="py-4">{children}</main>
-    </div>
+        {!isAdmin ? (
+          <main className="max-w-3xl mx-auto p-4">
+            <div className="rounded-xl border border-amber-300/30 bg-amber-300/10 p-4">
+              Admin access required. If this is unexpected, sign in as an admin.
+            </div>
+          </main>
+        ) : (
+          <main className="p-3 pb-24 max-w-5xl mx-auto">{children}</main>
+        )}
+      </body>
+    </html>
   );
 }
