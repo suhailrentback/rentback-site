@@ -1,26 +1,26 @@
-// app/app/admin/page.tsx
 import React from "react";
-import { getUser } from "@/lib/session";
+import Logo from "@/components/Logo";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminHome() {
-  const user = await getUser(); // guaranteed by middleware
-  // Optional: enforce admin role here
-  // if (user.activeRole !== "admin") notFound();
-
+export default function AdminHomePage() {
   return (
-    <div className="max-w-xl mx-auto space-y-4">
-      <h1 className="text-xl font-semibold">Admin</h1>
-
-      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-        <div className="font-medium">KYC queue</div>
-        <div className="text-sm opacity-80">0 pending</div>
+    <div className="max-w-2xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold">Admin • Overview</h1>
+        <Logo />
       </div>
 
-      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-        <div className="font-medium">Payments</div>
-        <div className="text-sm opacity-80">0 to review</div>
+      <div className="grid gap-4">
+        <a href="/app/admin/kyc" className="rounded-xl border border-white/10 bg-white/5 p-4 block hover:bg-white/10">
+          <div className="font-semibold">KYC Review</div>
+          <div className="text-sm opacity-75">Approve or reject new users.</div>
+        </a>
+
+        <a href="/app/admin/payments" className="rounded-xl border border-white/10 bg-white/5 p-4 block hover:bg-white/10">
+          <div className="font-semibold">Payments</div>
+          <div className="text-sm opacity-75">Inspect recent transactions.</div>
+        </a>
       </div>
     </div>
   );
