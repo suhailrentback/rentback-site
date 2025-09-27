@@ -1,20 +1,22 @@
 // app/layout.tsx
-import "./globals.css"; // <-- this line makes Tailwind styles apply
-import React from "react";
+import type { Metadata } from "next";
+import "./globals.css";
 
-export const metadata = {
-  title: "RentBack — Pay rent, earn rewards",
-  description: "Pakistan-focused rent payments with rewards.",
+export const metadata: Metadata = {
+  title: "RentBack",
+  description: "Pay rent, earn rewards.",
 };
 
 export default function RootLayout({
   children,
-}: { children: React.ReactNode }) {
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" dir="ltr" suppressHydrationWarning>
-      <body className="min-h-screen bg-white text-black dark:bg-[#0b0b0b] dark:text-white">
-        {children}
-      </body>
+    // NOTE: do NOT set bg/text colors here. Let pages control them with Tailwind utilities.
+    <html lang="en" suppressHydrationWarning>
+      {/* Keep this neutral so page-level dark: classes can take effect */}
+      <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
 }
