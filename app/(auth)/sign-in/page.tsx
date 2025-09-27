@@ -1,66 +1,68 @@
 // app/(auth)/sign-in/page.tsx
 import React from "react";
-import { signInAndRedirect } from "./actions";
 import Logo from "@/components/Logo";
+import { signInAction } from "./actions"; // keep your existing action export
 
 export const dynamic = "force-static";
 
 export default function SignInPage() {
   return (
     <div className="min-h-screen bg-white text-black dark:bg-[#0b0b0b] dark:text-white">
-      <header className="h-14 flex items-center px-4 border-b border-black/10 dark:border-white/10">
-        <Logo label="RentBack" />
+      <header className="h-14 flex items-center justify-between px-4 border-b border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0b0b0b]/80 backdrop-blur sticky top-0">
+        <div className="flex items-center gap-2">
+          <Logo label="RentBack" />
+        </div>
+        <a
+          href="/"
+          className="text-xs border border-black/10 dark:border-white/20 rounded px-2 py-1"
+        >
+          Back to Home
+        </a>
       </header>
 
-      <main className="max-w-md mx-auto px-4 py-12">
-        <h1 className="text-2xl font-semibold mb-6">Sign in</h1>
+      <main className="max-w-xl mx-auto px-4 py-10">
+        <div className="relative">
+          <div className="absolute -inset-6 rounded-3xl bg-gradient-to-tr from-emerald-500/20 via-teal-400/10 to-transparent blur-xl" />
+          <div className="relative rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-6">
+            <h1 className="text-2xl font-bold mb-1">Sign in</h1>
+            <p className="text-sm opacity-80 mb-6">Choose your role to continue.</p>
 
-        <form action={signInAndRedirect} className="space-y-4">
-          <div className="grid gap-2">
-            <label className="text-sm">Role</label>
-            <select
-              name="role"
-              className="border border-black/10 dark:border-white/20 rounded px-3 py-2 bg-transparent"
-              defaultValue="tenant"
-            >
-              <option value="tenant">Tenant</option>
-              <option value="landlord">Landlord</option>
-              <option value="admin">Admin</option>
-            </select>
+            <form action={signInAction} className="grid gap-4">
+              <div>
+                <label className="text-sm font-medium">Role</label>
+                <select
+                  name="role"
+                  defaultValue="tenant"
+                  className="mt-1 w-full bg-transparent border border-black/10 dark:border-white/20 rounded-lg px-3 py-2"
+                >
+                  <option value="tenant">tenant</option>
+                  <option value="landlord">landlord</option>
+                  <option value="admin">admin</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Full name (optional)</label>
+                <input
+                  name="fullName"
+                  placeholder="Your name"
+                  className="mt-1 w-full bg-transparent border border-black/10 dark:border-white/20 rounded-lg px-3 py-2"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Continue
+              </button>
+
+              <div className="text-xs opacity-70">
+                Demo preview — no real authentication or payments.
+              </div>
+            </form>
           </div>
-
-          <div className="grid gap-2">
-            <label className="text-sm">Name</label>
-            <input
-              name="fullName"
-              placeholder="Your name"
-              className="border border-black/10 dark:border-white/20 rounded px-3 py-2 bg-transparent"
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-sm">Language</label>
-            <select
-              name="lang"
-              className="border border-black/10 dark:border-white/20 rounded px-3 py-2 bg-transparent"
-              defaultValue="en"
-            >
-              <option value="en">English</option>
-              <option value="ur">اردو</option>
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            className="w-full rounded-xl px-4 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
-          >
-            Continue
-          </button>
-        </form>
-
-        <p className="text-xs opacity-70 mt-4">
-          Demo preview — no real authentication or payments yet.
-        </p>
+        </div>
       </main>
     </div>
   );
