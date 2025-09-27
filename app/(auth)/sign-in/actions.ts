@@ -2,28 +2,21 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { devLogin, type Role, type Lang } from "@/lib/session";
 
-export async function signInAction(formData: FormData) {
-  const role = ((formData.get("role") as Role) || "tenant") as Role;
-  const lang = ((formData.get("lang") as Lang) || "en") as Lang;
-  const next = (formData.get("next") as string) || "";
+// Minimal role-only sign-in. No session/KYC for now.
+// Reads <input name="role"> from the form and redirects.
+export async function signInRedirect(formData: FormData) {
+  try {
+    const role = String(formData.get("role") || "tenant");
+    const rolePath =
+      role === "admin" ? "admin" : role === "landlord" ? "landlord" : "tenant";
 
-  await devLogin({
-    roles: [role],
-    activeRole: role,
-    kycLevel: 0, // always start with no KYC; dashboards will prompt
-    lang,
-  });
-
-  const landing =
-    next && next.startsWith("/app")
-      ? next
-      : role === "tenant"
-      ? "/app/tenant"
-      : role === "landlord"
-      ? "/app/landlord"
-      : "/app/admin";
-
-  redirect(landing);
+    // If you later want to set a dev session, do it here.
+    // For now, just go to the correct dashboard:
+    redirect(`/app/${rolePath}`);
+  } catch (err) {
+    console.error("signInRedirect failed:", err);
+    // Bounce back to show the error banner
+    redirect("/sign-in?e=1");
+  }
 }
