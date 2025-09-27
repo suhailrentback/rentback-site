@@ -1,45 +1,45 @@
 // app/(auth)/sign-in/actions.ts
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { devLogin } from "@/lib/session";
 
-/**
- * Dev-only sign-in that seeds a session cookie and routes the user
- * straight to the correct dashboard based on activeRole + KYC level.
- */
+type Role = "tenant" | "landlord" | "admin";
+type Lang = "en" | "ur";
+
 export async function signInAndRedirect(formData: FormData) {
-  const role = (formData.get("role") as "tenant" | "landlord" | "admin") || "tenant";
-  const lang = (formData.get("lang") as "en" | "ur") || "en";
-  const kycLevel = Number(formData.get("kycLevel") || 0);
+  try {
+    const role = (formData.get("role") as Role) || "tenant";
+    const kycRaw = formData.get("kycLevel");
+    const lang = (formData.get("lang") as Lang) || "en";
 
-  // Give sensible role set based on chosen role
-  const roles: Array<"tenant" | "landlord" | "admin"> =
-    role === "admin" ? ["tenant", "landlord", "admin"] : [role];
+    // Defensive parsing
+    const kycLevel = typeof kycRaw === "string" ? Number(kycRaw) : 0;
+    const safeKyc = Number.isFinite(kycLevel) ? kycLevel : 0;
 
-  const user = {
-    id: "demo-user",
-    fullName: "Demo User",
-    roles,
-    activeRole: role,
-    kycLevel, // 0 → onboarding, 1+ → full access
-    lang,
-  };
+    // Minimal session bootstrap for demo
+    await devLogin({
+      roles: [role],
+      activeRole: role,
+      kycLevel: safeKyc,
+      lang,
+    });
 
-  // Store session (client-readable for demo)
-  cookies().set("rb_user", JSON.stringify(user), {
-    path: "/",
-    httpOnly: false,
-    sameSite: "lax",
-  });
-
-  // If KYC not complete, force onboarding first
-  if (kycLevel < 1) {
-    redirect("/app/onboarding");
+    // Route by KYC + role
+    if (safeKyc < 1) {
+      return redirect("/app/onboarding");
+    }
+    switch (role) {
+      case "landlord":
+        return redirect("/app/landlord");
+      case "admin":
+        return redirect("/app/admin");
+      default:
+        return redirect("/app/tenant");
+    }
+  } catch (err) {
+    console.error("signInAndRedirect error:", err);
+    // Safe fallback so you never hit the opaque error page
+    return redirect("/");
   }
-
-  // Otherwise land in the correct dashboard
-  if (role === "tenant") redirect("/app/tenant");
-  if (role === "landlord") redirect("/app/landlord");
-  redirect("/app/admin");
 }
