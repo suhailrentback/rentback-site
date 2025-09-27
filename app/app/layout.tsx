@@ -1,3 +1,4 @@
+// app/app/layout.tsx
 import React from "react";
 import { getUser } from "@/lib/session";
 import { switchLanguageAction, setActiveRoleAction } from "./actions";
@@ -11,7 +12,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getUser(); // never null because middleware gates
+  const user = await getUser(); // middleware ensures a user
   const lang = user?.lang || "en";
   const dir = lang === "ur" ? "rtl" : "ltr";
 
@@ -20,8 +21,9 @@ export default async function AppLayout({
       <body className="min-h-screen bg-background text-foreground">
         <ThemeProvider>
           <LangProvider initialLang={lang}>
+            {/* HEADER ONLY (no footer anywhere) */}
             <header className="sticky top-0 z-[40] h-14 flex items-center justify-between px-3 bg-background/80 backdrop-saturate-150 backdrop-blur border-b border-border">
-              {/* Brand logo */}
+              {/* Brand */}
               <div className="flex items-center gap-2">
                 <Logo label="RentBack" />
               </div>
@@ -61,7 +63,7 @@ export default async function AppLayout({
               </div>
             </header>
 
-            {/* KYC banner */}
+            {/* Subtle KYC banner (kept above main) */}
             {user && user.kycLevel < 1 ? (
               <div className="px-3 pt-2 max-w-xl mx-auto">
                 <div className="border border-amber-300/20 bg-amber-300/10 rounded-xl p-3 text-sm">
@@ -72,6 +74,7 @@ export default async function AppLayout({
               </div>
             ) : null}
 
+            {/* MAIN CONTENT (no footer below) */}
             <main className="p-3 pb-24 max-w-xl mx-auto">{children}</main>
           </LangProvider>
         </ThemeProvider>
