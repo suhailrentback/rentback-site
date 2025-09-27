@@ -1,56 +1,76 @@
 // lib/session.ts
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-export type RBRole = "tenant" | "landlord" | "admin";
+export type Role = "tenant" | "landlord" | "admin";
 export type Lang = "en" | "ur";
+export type KycLevel = 0 | 1 | 2;
 
 export type User = {
   id: string;
-  roles: RBRole[];
-  activeRole: RBRole;
-  kycLevel: 0 | 1 | 2;
+  roles: Role[];
+  activeRole: Role;
+  kycLevel: KycLevel;
   lang: Lang;
   fullName?: string;
 };
 
-const KEY = "rb_user";
+const COOKIE_NAME = "rb_session";
 
-// --- core helpers ---
-export function readUser(): User | null {
+function parseCookie(): User | null {
   try {
-    const v = cookies().get(KEY)?.value;
-    if (!v) return null;
-    const p = JSON.parse(v);
-    const user: User = {
-      id: p.id || "dev",
-      roles: (p.roles as RBRole[]) || ["tenant"],
-      activeRole: (p.activeRole as RBRole) || "tenant",
-      kycLevel: (p.kycLevel as 0 | 1 | 2) ?? 0,
-      lang: (p.lang as Lang) || "en",
-      fullName: p.fullName,
-    };
-    return user;
+    const c = cookies().get(COOKIE_NAME)?.value;
+    if (!c) return null;
+    const data = JSON.parse(Buffer.from(c, "base64").toString("utf8")) as User;
+    // minimal sanity checks
+    if (!data || !data.activeRole || !Array.isArray(data.roles)) return null;
+    return data;
   } catch {
     return null;
   }
 }
 
-export function writeUser(u: User) {
-  cookies().set(KEY, JSON.stringify(u), {
-    httpOnly: false, // demo only; set true when you move to real auth
-    sameSite: "lax",
-    secure: true,
+function writeCookie(user: User) {
+  const payload = Buffer.from(JSON.stringify(user), "utf8").toString("base64");
+  cookies().set({
+    name: COOKIE_NAME,
+    value: payload,
+    httpOnly: true,
     path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    sameSite: "lax",
+    // secure is automatically enforced on Vercel prod
   });
 }
 
-export function clearUser() {
-  cookies().delete(KEY);
+export async function getUser(): Promise<User | null> {
+  return parseCookie();
 }
 
-// --- compatibility shim ---
-// Many pages still `import { getUser } from "@/lib/session"` and sometimes `await getUser()`.
-export async function getUser(): Promise<User | null> {
-  return readUser();
+export async function requireUser(): Promise<User> {
+  const user = parseCookie();
+  if (!user) redirect("/sign-in");
+  return user!;
+}
+
+export async function setSession(user: User): Promise<void> {
+  writeCookie(user);
+}
+
+export async function clearSession(): Promise<void> {
+  cookies().delete(COOKIE_NAME);
+}
+
+// convenience helpers
+export async function setActiveRole(role: Role): Promise<void> {
+  const u = parseCookie();
+  if (!u) redirect("/sign-in");
+  const next = { ...u!, activeRole: role };
+  writeCookie(next);
+}
+
+export async function setLang(lang: Lang): Promise<void> {
+  const u = parseCookie();
+  if (!u) redirect("/sign-in");
+  const next = { ...u!, lang };
+  writeCookie(next);
 }
