@@ -16,7 +16,7 @@ export default function LandingPage() {
           <Logo label="RentBack" />
         </div>
         <nav className="hidden sm:flex items-center gap-4 text-sm opacity-80">
-          <a href="#features" className="hover:opacity-100">Features</a>
+          <a href="#why" className="hover:opacity-100">Why RentBack</a>
           <a href="#how" className="hover:opacity-100">How it works</a>
           <a href="#faq" className="hover:opacity-100">FAQ</a>
           <a
@@ -38,9 +38,8 @@ export default function LandingPage() {
                 Pay rent, earn rewards.
               </h1>
               <p className="mt-4 text-base md:text-lg opacity-80">
-                RentBack helps tenants pay rent easily and earn perks with
-                Pakistani brands — while landlords get clear visibility on
-                incoming payments and receipts.
+                Pay easily via bank transfer, card, or wallet. Landlords see clear
+                incoming payments. Tenants earn perks with Pakistani brands.
               </p>
               <div className="mt-8 flex gap-3">
                 <a
@@ -50,7 +49,7 @@ export default function LandingPage() {
                   Sign in
                 </a>
                 <a
-                  href="#features"
+                  href="#why"
                   className="inline-flex items-center justify-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
                 >
                   Learn more
@@ -83,53 +82,164 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Features */}
-        <section id="features" className="py-12">
-          <h2 className="text-2xl font-bold mb-6">Why RentBack</h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-              <div className="font-semibold mb-1">Fast payments</div>
-              <div className="text-sm opacity-80">Bank transfer, card, or wallet.</div>
-            </div>
-            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-              <div className="font-semibold mb-1">Rewards</div>
-              <div className="text-sm opacity-80">Redeem perks with Pakistani brands.</div>
-            </div>
-            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-              <div className="font-semibold mb-1">Landlord visibility</div>
-              <div className="text-sm opacity-80">Clear view of incoming rent and receipts.</div>
+        {/* BIG CTA: Why RentBack */}
+        <section id="why" className="py-10">
+          <div className="relative">
+            <div className="absolute -inset-6 rounded-3xl bg-gradient-to-tr from-emerald-400/15 via-teal-300/10 to-transparent blur-xl" />
+            <div className="relative rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-6 md:p-8">
+              <div className="flex items-center justify-between gap-4 mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold">Why RentBack</h2>
+                <a
+                  href="/sign-in"
+                  className="hidden md:inline-flex items-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  Get started
+                </a>
+              </div>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="font-semibold mb-1">Fast payments</div>
+                  <div className="text-sm opacity-80">Bank transfer, card, or wallet in seconds.</div>
+                </div>
+                <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="font-semibold mb-1">Rewards</div>
+                  <div className="text-sm opacity-80">Redeem perks with Pakistani brands.</div>
+                </div>
+                <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="font-semibold mb-1">Landlord visibility</div>
+                  <div className="text-sm opacity-80">Clear view of incoming rent and receipts.</div>
+                </div>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a
+                  href="/sign-in"
+                  className="inline-flex items-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  Create account
+                </a>
+                <a
+                  href="#how"
+                  className="inline-flex items-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                >
+                  See how it works
+                </a>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* How it works */}
-        <section id="how" className="py-12">
-          <h2 className="text-2xl font-bold mb-6">How it works</h2>
-          <ol className="grid md:grid-cols-3 gap-4 list-decimal pl-5">
-            <li className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-              Create an account and verify KYC.
-            </li>
-            <li className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-              Pay rent via bank transfer, card, or wallet.
-            </li>
-            <li className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-              Earn and redeem rewards; download receipts anytime.
-            </li>
-          </ol>
+        {/* BIG CTA: How it works */}
+        <section id="how" className="py-10">
+          <div className="relative">
+            <div className="absolute -inset-6 rounded-3xl bg-gradient-to-tr from-emerald-500/15 via-emerald-300/10 to-transparent blur-xl" />
+            <div className="relative rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-6 md:p-8">
+              <div className="flex items-center justify-between gap-4 mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold">How it works</h2>
+                <a
+                  href="/sign-in"
+                  className="hidden md:inline-flex items-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  Sign in
+                </a>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="text-sm opacity-70 mb-1">Step 1</div>
+                  <div className="font-semibold">Verify KYC</div>
+                  <div className="text-sm opacity-80 mt-1">
+                    Quick onboarding to unlock payments & rewards.
+                  </div>
+                </div>
+                <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="text-sm opacity-70 mb-1">Step 2</div>
+                  <div className="font-semibold">Pay rent</div>
+                  <div className="text-sm opacity-80 mt-1">
+                    Pay via bank transfer, card, or wallet — get receipts.
+                  </div>
+                </div>
+                <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="text-sm opacity-70 mb-1">Step 3</div>
+                  <div className="font-semibold">Earn & redeem</div>
+                  <div className="text-sm opacity-80 mt-1">
+                    Collect points and redeem perks on Pakistani brands.
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a
+                  href="/sign-in"
+                  className="inline-flex items-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  Start now
+                </a>
+                <a
+                  href="#faq"
+                  className="inline-flex items-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                >
+                  Read FAQ
+                </a>
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* FAQ */}
-        <section id="faq" className="py-12">
-          <h2 className="text-2xl font-bold mb-6">FAQ</h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-              <div className="font-semibold mb-1">Is this live?</div>
-              <div className="text-sm opacity-80">This is a demo preview — no real payments.</div>
-            </div>
-            <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-              <div className="font-semibold mb-1">Where do I sign in?</div>
-              <div className="text-sm opacity-80">
-                Use the Sign in button in the header to access the app.
+        {/* BIG CTA: FAQ */}
+        <section id="faq" className="py-10">
+          <div className="relative">
+            <div className="absolute -inset-6 rounded-3xl bg-gradient-to-tr from-teal-400/15 via-emerald-300/10 to-transparent blur-xl" />
+            <div className="relative rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-6 md:p-8">
+              <div className="flex items-center justify-between gap-4 mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold">FAQ</h2>
+                <a
+                  href="/sign-in"
+                  className="hidden md:inline-flex items-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  Sign in
+                </a>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="font-semibold mb-1">Is this live?</div>
+                  <div className="text-sm opacity-80">
+                    This is a demo preview — no real payments are processed yet.
+                  </div>
+                </div>
+                <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="font-semibold mb-1">Where do I sign in?</div>
+                  <div className="text-sm opacity-80">
+                    Use the “Sign in” button above to access the app.
+                  </div>
+                </div>
+                <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="font-semibold mb-1">Do landlords get receipts?</div>
+                  <div className="text-sm opacity-80">
+                    Yes — tenants get receipts and landlords see clear payment status.
+                  </div>
+                </div>
+                <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+                  <div className="font-semibold mb-1">Are rewards in PK?</div>
+                  <div className="text-sm opacity-80">
+                    Rewards catalogue focuses on Pakistani brands and utilities.
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a
+                  href="/sign-in"
+                  className="inline-flex items-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  Create account
+                </a>
+                <a
+                  href="mailto:help@rentback.app"
+                  className="inline-flex items-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                >
+                  Contact support
+                </a>
               </div>
             </div>
           </div>
