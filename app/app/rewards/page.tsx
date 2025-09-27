@@ -1,20 +1,8 @@
 "use client";
 
-import * as React from "react";
-import Logo from "@/components/Logo";
+import React from "react";
 import KycGate from "@/components/KycGate";
-// import RewardsScreen from "@/components/RewardsScreen";
-
-function RewardsStub() {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="font-semibold mb-2">Rewards</div>
-      <div className="text-sm opacity-80">
-        This is a placeholder rewards screen. Replace with your RewardsScreen.
-      </div>
-    </div>
-  );
-}
+import Logo from "@/components/Logo";
 
 export default function RewardsPage() {
   return (
@@ -25,8 +13,13 @@ export default function RewardsPage() {
       </div>
 
       <KycGate>
-        {/* Replace <RewardsStub /> with <RewardsScreen /> when ready */}
-        <RewardsStub />
+        {/* Your real Rewards UI goes here. Keep it minimal for now. */}
+        <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-4">
+          <div className="font-semibold mb-2">Rewards</div>
+          <p className="text-sm opacity-80">
+            Pakistan-focused perks and redemptions. (Demo UI — replace with live catalogue)
+          </p>
+        </div>
       </KycGate>
     </div>
   );
