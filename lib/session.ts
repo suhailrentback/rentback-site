@@ -1,57 +1,51 @@
 // lib/session.ts
-"use server";
-
 import { cookies } from "next/headers";
 
-export type Role = "tenant" | "landlord" | "admin";
+export type RBRole = "tenant" | "landlord" | "admin";
 export type Lang = "en" | "ur";
-export type KycLevel = 0 | 1 | 2;
 
 export type User = {
-  roles: Role[];
-  activeRole: Role;
-  kycLevel: KycLevel;
+  id: string;
+  roles: RBRole[];
+  activeRole: RBRole;
+  kycLevel: 0 | 1 | 2;
   lang: Lang;
+  fullName?: string;
 };
 
-const COOKIE_NAME = "rb_session";
+const COOKIE = "rb_user";
 
-function encode(v: unknown) {
-  return Buffer.from(JSON.stringify(v)).toString("base64url");
-}
-function decode<T>(raw: string): T | null {
+export function getUser(): User | null {
   try {
-    return JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as T;
+    const c = cookies().get(COOKIE)?.value;
+    if (!c) return null;
+    const parsed = JSON.parse(c);
+    // minimal shape guard with sane defaults
+    const user: User = {
+      id: parsed.id || "dev",
+      roles: (parsed.roles as RBRole[]) || ["tenant"],
+      activeRole: (parsed.activeRole as RBRole) || "tenant",
+      kycLevel: (parsed.kycLevel as 0 | 1 | 2) ?? 0,
+      lang: (parsed.lang as Lang) || "en",
+      fullName: parsed.fullName,
+    };
+    return user;
   } catch {
     return null;
   }
 }
 
-/** Read current user session from the signed cookie (unsiged here for demo). */
-export async function getUser(): Promise<User | null> {
-  const c = cookies().get(COOKIE_NAME)?.value;
-  if (!c) return null;
-  const parsed = decode<User>(c);
-  if (!parsed) return null;
-  // very light validation
-  if (!parsed.activeRole || !parsed.roles?.length) return null;
-  return parsed;
-}
-
-/** Dev/demo login: write a cookie the middleware & server can read. */
-export async function devLogin(u: User): Promise<void> {
-  const value = encode(u);
-  cookies().set({
-    name: COOKIE_NAME,
-    value,
-    httpOnly: true,
+export function setUser(u: User) {
+  const value = JSON.stringify(u);
+  cookies().set(COOKIE, value, {
+    httpOnly: false, // TEMP for demo; switch to true when using real auth
     sameSite: "lax",
+    secure: true,
     path: "/",
-    // maxAge: 60 * 60 * 24 * 30, // 30 days (optional)
+    maxAge: 60 * 60 * 24 * 30, // 30 days
   });
 }
 
-/** Clear the session. */
-export async function logout(): Promise<void> {
-  cookies().delete(COOKIE_NAME);
+export function clearUser() {
+  cookies().delete(COOKIE);
 }
