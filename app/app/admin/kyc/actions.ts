@@ -3,18 +3,16 @@
 
 import { revalidatePath } from "next/cache";
 
-export async function approveKyc(formData: FormData) {
+export async function approveKyc(formData: FormData): Promise<void> {
   const id = String(formData.get("id") || "");
   // TODO: replace with real backend call
   console.log("[KYC] approve", id);
   revalidatePath("/app/admin/kyc");
-  return { ok: true };
 }
 
-export async function rejectKyc(formData: FormData) {
+export async function rejectKyc(formData: FormData): Promise<void> {
   const id = String(formData.get("id") || "");
   // TODO: replace with real backend call
   console.log("[KYC] reject", id);
   revalidatePath("/app/admin/kyc");
-  return { ok: true };
 }
