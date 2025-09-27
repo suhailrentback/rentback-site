@@ -1,318 +1,412 @@
-// app/app/onboarding/page.tsx
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { completeBasicKycAction, setActiveRoleAction } from "../actions";
+
+/**
+ * RentBack • Onboarding Wizard (client-only, compile-safe)
+ * - 6 steps: Role → Basic Info → CNIC/DOB → Docs → Consent → Review & Finish
+ * - No external deps. Uses localStorage to simulate KYC and user profile.
+ * - Redirects to /app after "Finish".
+ *
+ * You can swap the storage bits with real server actions later.
+ */
+
+// ---------------- Types ----------------
+type Role = "tenant" | "landlord";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
-type Role = "tenant" | "landlord";
+type Profile = {
+  fullName: string;
+  contact: string; // email or phone
+  cnic: string;
+  dob: string; // ISO yyyy-mm-dd
+  role: Role;
+};
 
-function isDigits(s: string, len: number) {
-  return new RegExp(`^\\d{${len}}$`).test(s);
-}
+// ---------------- Utils ----------------
+const clampStep = (n: number): Step => {
+  const x = Math.max(1, Math.min(6, Math.trunc(n)));
+  return x as Step;
+};
 
+const isCNIC = (s: string) => /^[0-9]{5}-?[0-9]{7}-?[0-9]$/.test(s.trim());
+const isPhone = (s: string) => /^(\+?92|0)?[0-9]{10}$/.test(s.replace(/\D/g, ""));
+const isEmail = (s: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s.trim());
+
+// simple logo to avoid extra imports
+const RentBackLogo: React.FC<{ size?: number; color?: string }> = ({
+  size = 22,
+  color = "#10b981",
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M3 11.5L12 4l9 7.5" />
+    <path d="M5 10v9h14v-9" />
+  </svg>
+);
+
+const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className,
+}) => (
+  <div
+    className={
+      "rounded-2xl border border-white/10 bg-white/5 p-4 " + (className || "")
+    }
+  >
+    {children}
+  </div>
+);
+
+// ---------------- Page ----------------
 export default function OnboardingPage() {
+  const router = useRouter();
+
+  // Wizard state
   const [step, setStep] = useState<Step>(1);
 
-  // Step 1: role
+  // Profile fields
   const [role, setRole] = useState<Role>("tenant");
-
-  // Step 2: personal
   const [fullName, setFullName] = useState("");
   const [contact, setContact] = useState("");
-
-  // Step 3: CNIC
   const [cnic, setCnic] = useState("");
   const [dob, setDob] = useState("");
 
-  // Step 4: selfie (placeholder)
+  // Docs (demo placeholders)
   const [selfiePicked, setSelfiePicked] = useState<File | null>(null);
-
-  // Step 5: address proof (placeholder)
   const [addressDoc, setAddressDoc] = useState<File | null>(null);
 
-  // Step 6: consent
+  // Consent
   const [consent, setConsent] = useState(false);
 
-  const [busy, startTransition] = useTransition();
-  const router = useRouter();
+  // Busy UX
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Validation per step
+  // Prefill from localStorage if user returns to onboarding
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("rb-onboarding-draft");
+      if (saved) {
+        const d = JSON.parse(saved);
+        if (d.role) setRole(d.role);
+        if (d.fullName) setFullName(d.fullName);
+        if (d.contact) setContact(d.contact);
+        if (d.cnic) setCnic(d.cnic);
+        if (d.dob) setDob(d.dob);
+      }
+    } catch {}
+  }, []);
+
+  // Draft save
+  useEffect(() => {
+    const draft = { role, fullName, contact, cnic, dob };
+    try {
+      localStorage.setItem("rb-onboarding-draft", JSON.stringify(draft));
+    } catch {}
+  }, [role, fullName, contact, cnic, dob]);
+
+  const profile: Profile = useMemo(
+    () => ({ role, fullName, contact, cnic, dob }),
+    [role, fullName, contact, cnic, dob]
+  );
+
+  // Navigation helpers (typed)
+  const next = () => setStep((s) => clampStep(s + 1));
+  const back = () => setStep((s) => clampStep(s - 1));
+
+  // Validation per-step
   const canNext = useMemo(() => {
-    if (busy) return false;
     switch (step) {
       case 1:
         return role === "tenant" || role === "landlord";
       case 2:
-        return fullName.trim().length >= 2 && contact.trim().length >= 6;
+        return fullName.trim().length >= 3 && (isPhone(contact) || isEmail(contact));
       case 3:
-        return isDigits(cnic, 13) && !!dob;
+        return isCNIC(cnic) && /^\d{4}-\d{2}-\d{2}$|^\d{4}\-\d{2}\-\d{2}$|^\d{4}\d{2}\d{2}$/.test(
+          dob.replace(/\./g, "-")
+        );
       case 4:
-        return !!selfiePicked;
+        return !!selfiePicked && !!addressDoc;
       case 5:
-        return !!addressDoc;
-      case 6:
         return consent;
-      default:
+      case 6:
         return true;
+      default:
+        return false;
     }
-  }, [step, role, fullName, contact, cnic, dob, selfiePicked, addressDoc, consent, busy]);
+  }, [step, role, fullName, contact, cnic, dob, selfiePicked, addressDoc, consent]);
 
-  const next = () => setStep((s) => Math.min(((s + 1) as Step), 6));
-  const back = () => setStep((s) => Math.max(((s - 1) as Step), 1));
+  // Finish → simulate KYC=1 and send to /app
+  const finish = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      // Simulate writing a user record
+      localStorage.setItem(
+        "rb-user",
+        JSON.stringify({
+          roles: [role],
+          activeRole: role,
+          kycLevel: 1, // mark as completed
+          lang: (typeof window !== "undefined" &&
+          document?.documentElement?.getAttribute("lang") === "ur")
+            ? "ur"
+            : "en",
+          profile,
+        })
+      );
+      // Also keep compat with your app shell
+      localStorage.setItem("rb-kyc-level", "1");
+      localStorage.setItem("rb-role", role);
 
-  async function finish() {
-    startTransition(async () => {
-      // 1) Set active role cookie
-      const fd = new FormData();
-      fd.set("role", role);
-      await setActiveRoleAction(fd);
+      // Clear onboarding draft
+      localStorage.removeItem("rb-onboarding-draft");
 
-      // 2) Mark basic KYC complete (cookie rb_kyc=1)
-      await completeBasicKycAction();
+      // Navigate to app
+      router.push("/app");
+    } catch (e: any) {
+      setError("Something went wrong while saving. Please try again.");
+      console.error(e);
+    } finally {
+      setBusy(false);
+    }
+  };
 
-      // (Optional) You could persist the collected fields to a backend here.
-
-      // 3) Go to app
-      router.replace("/app");
-    });
-  }
-
+  // ------------- UI -------------
   return (
-    <div className="min-h-[calc(100vh-56px)] px-4 pt-6 pb-24 max-w-xl mx-auto">
-      {/* Title */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="font-bold text-emerald-400">RentBack — Onboarding</div>
-        <div className="text-xs opacity-70">Demo flow (no real KYC)</div>
-      </div>
+    <div className="min-h-screen bg-[#0b0b0b] text-white">
+      {/* Header */}
+      <header className="sticky top-0 z-40 h-14 flex items-center justify-between px-3 bg-[#0b0b0bcc] backdrop-saturate-150 backdrop-blur border-b border-white/10">
+        <div className="flex items-center gap-2 font-bold text-emerald-400">
+          <RentBackLogo />
+          RentBack
+        </div>
+        <div className="text-sm opacity-80">Onboarding</div>
+      </header>
 
       {/* Progress */}
-      <div className="flex items-center gap-2 text-xs mb-4">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
+      <div className="max-w-xl mx-auto px-3 pt-3">
+        <div className="text-xs opacity-70">Step {step} of 6</div>
+        <div className="mt-1 h-2 w-full bg-white/10 rounded-full overflow-hidden">
           <div
-            key={i}
-            className={`h-1 rounded-full flex-1 ${
-              i <= step ? "bg-emerald-500" : "bg-white/10"
-            }`}
+            className="h-2 bg-emerald-500"
+            style={{ width: `${(step / 6) * 100}%` }}
           />
-        ))}
+        </div>
       </div>
 
-      {/* Card */}
-      <div className="rounded-2xl border p-4 bg-white/5 border-white/10">
-        {step === 1 && (
-          <div>
-            <h2 className="text-lg font-bold">Choose your role</h2>
-            <p className="text-sm opacity-80 mt-1">
-              You can switch later from the header menu.
-            </p>
-            <div className="grid gap-2 mt-4">
-              {(["tenant", "landlord"] as const).map((r) => (
-                <label
-                  key={r}
-                  className={`px-3 py-2 rounded-lg border cursor-pointer flex items-center justify-between ${
-                    role === r
-                      ? "bg-emerald-900/30 border-emerald-700"
-                      : "bg-white/5 border-white/10 hover:bg-white/10"
-                  }`}
-                >
-                  <span className="capitalize">{r}</span>
-                  <input
-                    type="radio"
-                    name="role"
-                    checked={role === r}
-                    onChange={() => setRole(r)}
-                  />
-                </label>
-              ))}
-            </div>
+      {/* Body */}
+      <main className="max-w-xl mx-auto p-3 pb-24 space-y-3">
+        {error ? (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm">
+            {error}
           </div>
+        ) : null}
+
+        {step === 1 && (
+          <Card>
+            <div className="font-semibold">Choose your role</div>
+            <div className="text-xs opacity-70">
+              You can switch later inside the app.
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setRole("tenant")}
+                className={
+                  "px-3 py-3 rounded-xl border font-semibold " +
+                  (role === "tenant"
+                    ? "border-emerald-500 bg-emerald-900/20"
+                    : "border-white/10 hover:bg-white/5")
+                }
+              >
+                Tenant
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("landlord")}
+                className={
+                  "px-3 py-3 rounded-xl border font-semibold " +
+                  (role === "landlord"
+                    ? "border-emerald-500 bg-emerald-900/20"
+                    : "border-white/10 hover:bg-white/5")
+                }
+              >
+                Landlord
+              </button>
+            </div>
+          </Card>
         )}
 
         {step === 2 && (
-          <div>
-            <h2 className="text-lg font-bold">Basic information</h2>
-            <p className="text-sm opacity-80 mt-1">
-              Tell us who you are. This helps us set up your account.
-            </p>
-            <div className="grid gap-2 mt-4">
+          <Card>
+            <div className="font-semibold">Basic information</div>
+            <div className="grid gap-2 mt-3">
               <input
-                className="px-3 py-2 rounded-lg border border-white/10 bg-white/5"
-                placeholder="Full name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                placeholder="Full name"
+                className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"
               />
               <input
-                className="px-3 py-2 rounded-lg border border-white/10 bg-white/5"
-                placeholder="Email or phone"
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
+                placeholder="Email or Pakistani phone"
+                className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"
               />
+              <div className="text-xs opacity-70">
+                Use +92 or 0 for phone numbers, e.g. +923001234567
+              </div>
             </div>
-          </div>
+          </Card>
         )}
 
         {step === 3 && (
-          <div>
-            <h2 className="text-lg font-bold">CNIC details</h2>
-            <p className="text-sm opacity-80 mt-1">
-              Enter your 13-digit CNIC and date of birth.
-            </p>
-            <div className="grid gap-2 mt-4">
+          <Card>
+            <div className="font-semibold">Identity details</div>
+            <div className="grid gap-2 mt-3">
               <input
-                className="px-3 py-2 rounded-lg border border-white/10 bg-white/5"
-                placeholder="CNIC (13 digits)"
-                inputMode="numeric"
                 value={cnic}
-                onChange={(e) =>
-                  setCnic(e.target.value.replace(/[^0-9]/g, "").slice(0, 13))
-                }
+                onChange={(e) => setCnic(e.target.value)}
+                placeholder="CNIC (xxxxx-xxxxxxx-x)"
+                className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"
               />
               <input
-                type="date"
-                className="px-3 py-2 rounded-lg border border-white/10 bg-white/5"
                 value={dob}
                 onChange={(e) => setDob(e.target.value)}
+                type="date"
+                placeholder="Date of Birth"
+                className="px-3 py-3 rounded-xl border border-white/10 bg-white/5 outline-none"
               />
-              <div className="text-xs opacity-70">
-                Demo only — we’re not sending this anywhere.
-              </div>
             </div>
-          </div>
+          </Card>
         )}
 
         {step === 4 && (
-          <div>
-            <h2 className="text-lg font-bold">Selfie verification (demo)</h2>
-            <p className="text-sm opacity-80 mt-1">
-              In production we’ll use a verified KYC provider. For the demo,
-              upload any image file.
-            </p>
-            <div className="grid gap-2 mt-4">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setSelfiePicked(e.target.files?.[0] ?? null)}
-                className="px-3 py-2 rounded-lg border border-white/10 bg-white/5"
-              />
-              {selfiePicked ? (
-                <div className="text-xs opacity-80">
-                  Picked: <b>{selfiePicked.name}</b> ({Math.round(selfiePicked.size / 1024)} KB)
-                </div>
-              ) : (
-                <div className="text-xs opacity-70">No file selected.</div>
-              )}
+          <Card>
+            <div className="font-semibold">Upload documents (demo)</div>
+            <div className="text-xs opacity-70">
+              Selfie and address proof (e.g., utility bill).
             </div>
-          </div>
+            <div className="grid gap-2 mt-3">
+              <label className="block">
+                <span className="text-sm opacity-80">Selfie</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSelfiePicked(e.target.files?.[0] || null)}
+                  className="mt-1 block w-full text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm opacity-80">Address proof</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => setAddressDoc(e.target.files?.[0] || null)}
+                  className="mt-1 block w-full text-sm"
+                />
+              </label>
+              <div className="text-xs opacity-70">
+                Note: This is a demo. Files are not uploaded anywhere.
+              </div>
+            </div>
+          </Card>
         )}
 
         {step === 5 && (
-          <div>
-            <h2 className="text-lg font-bold">Proof of address (demo)</h2>
-            <p className="text-sm opacity-80 mt-1">
-              Upload a recent utility bill or tenancy document (demo file).
-            </p>
-            <div className="grid gap-2 mt-4">
-              <input
-                type="file"
-                accept=".jpg,.jpeg,.png,.pdf"
-                onChange={(e) => setAddressDoc(e.target.files?.[0] ?? null)}
-                className="px-3 py-2 rounded-lg border border-white/10 bg-white/5"
-              />
-              {addressDoc ? (
-                <div className="text-xs opacity-80">
-                  Picked: <b>{addressDoc.name}</b> ({Math.round(addressDoc.size / 1024)} KB)
-                </div>
-              ) : (
-                <div className="text-xs opacity-70">No file selected.</div>
-              )}
+          <Card>
+            <div className="font-semibold">Consent</div>
+            <div className="text-sm opacity-80 mt-2">
+              I agree to the processing of my information for KYC and compliance
+              purposes as described in the Privacy Policy.
             </div>
-          </div>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                id="consent"
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+              />
+              <label htmlFor="consent" className="text-sm">
+                I agree
+              </label>
+            </div>
+          </Card>
         )}
 
         {step === 6 && (
-          <div>
-            <h2 className="text-lg font-bold">Review & consent</h2>
-            <p className="text-sm opacity-80 mt-1">
-              We’ll mark your KYC Level as <b>1</b> so you can start paying rent
-              and earning rewards.
-            </p>
-            <div className="mt-3 rounded-lg border border-white/10 p-3">
-              <div className="text-sm">
-                <div>
-                  Role: <b className="capitalize">{role}</b>
-                </div>
-                <div>
-                  Name: <b>{fullName || "—"}</b>
-                </div>
-                <div>
-                  Contact: <b>{contact || "—"}</b>
-                </div>
-                <div>
-                  CNIC: <b>{cnic || "—"}</b> • DOB: <b>{dob || "—"}</b>
-                </div>
-                <div>
-                  Selfie: <b>{selfiePicked?.name || "—"}</b>
-                </div>
-                <div>
-                  Address doc: <b>{addressDoc?.name || "—"}</b>
-                </div>
+          <Card>
+            <div className="font-semibold">Review & Finish</div>
+            <div className="mt-3 text-sm space-y-1">
+              <div>
+                <span className="opacity-70">Role:</span>{" "}
+                <b className="uppercase">{role}</b>
               </div>
-              <label className="mt-3 flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(e) => setConsent(e.target.checked)}
-                />
-                I confirm the above details are correct (demo).
-              </label>
+              <div>
+                <span className="opacity-70">Full name:</span> <b>{fullName}</b>
+              </div>
+              <div>
+                <span className="opacity-70">Contact:</span> <b>{contact}</b>
+              </div>
+              <div>
+                <span className="opacity-70">CNIC:</span> <b>{cnic}</b>
+              </div>
+              <div>
+                <span className="opacity-70">DOB:</span> <b>{dob}</b>
+              </div>
+              <div className="opacity-70 text-xs mt-2">
+                You can edit these in your Profile later.
+              </div>
             </div>
-          </div>
+          </Card>
         )}
-      </div>
 
-      {/* Controls */}
-      <div className="flex items-center justify-between mt-4">
-        <button
-          onClick={back}
-          disabled={step === 1 || busy}
-          className="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-60"
-        >
-          Back
-        </button>
-
-        {step < 6 ? (
+        {/* Nav Controls */}
+        <div className="flex items-center justify-between pt-1">
           <button
-            onClick={next}
-            disabled={!canNext}
-            className={`px-3 py-2 rounded-lg font-semibold ${
-              canNext
-                ? "bg-emerald-600 hover:bg-emerald-700"
-                : "bg-emerald-600/40 cursor-not-allowed"
-            }`}
+            type="button"
+            onClick={back}
+            disabled={step === 1 || busy}
+            className="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-60"
           >
-            Continue
+            Back
           </button>
-        ) : (
-          <button
-            onClick={finish}
-            disabled={!canNext}
-            className={`px-3 py-2 rounded-lg font-semibold ${
-              canNext
-                ? "bg-emerald-600 hover:bg-emerald-700"
-                : "bg-emerald-600/40 cursor-not-allowed"
-            }`}
-          >
-            {busy ? "Finishing…" : "Finish onboarding"}
-          </button>
-        )}
-      </div>
 
-      <div className="text-xs opacity-70 mt-3">
-        Demo only — no real verification is performed.
-      </div>
+          {step < 6 ? (
+            <button
+              type="button"
+              onClick={next}
+              disabled={!canNext || busy}
+              className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 font-semibold disabled:opacity-60"
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={finish}
+              disabled={!canNext || busy}
+              className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 font-semibold disabled:opacity-60"
+            >
+              {busy ? "Finishing…" : "Finish & Go to App"}
+            </button>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
