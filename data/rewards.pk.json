@@ -1,0 +1,14 @@
+[
+  { "id": "jazz",   "brand": "Jazz",      "title": "Jazz Load",      "note": "Mobile top-up", "save": "Save 5%",  "denom": [200, 500, 1000] },
+  { "id": "telenor","brand": "Telenor",   "title": "Telenor Load",   "note": "Mobile top-up", "save": "Save 5%",  "denom": [200, 500, 1000] },
+  { "id": "zong",   "brand": "Zong",      "title": "Zong Load",      "note": "Mobile top-up", "save": "Save 5%",  "denom": [200, 500, 1000] },
+  { "id": "ufone",  "brand": "Ufone",     "title": "Ufone Load",     "note": "Mobile top-up", "save": "Save 5%",  "denom": [200, 500, 1000] },
+  { "id": "easyp",  "brand": "Easypaisa", "title": "Easypaisa Wallet","note": "Wallet credit", "save": "2%",       "denom": [500, 1000, 2000] },
+  { "id": "jazzc",  "brand": "JazzCash",  "title": "JazzCash Wallet","note": "Wallet credit", "save": "2%",       "denom": [500, 1000, 2000] },
+  { "id": "daraz",  "brand": "Daraz",     "title": "Daraz Voucher",  "note": "Shopping",      "save": "Up to 8%", "denom": [500, 1000, 2000] },
+  { "id": "careem", "brand": "Careem",    "title": "Careem Credit",  "note": "Rides & food",  "save": "5%",       "denom": [300, 500, 1000] },
+  { "id": "foodp",  "brand": "Foodpanda", "title": "Foodpanda",      "note": "Food delivery", "save": "5%",       "denom": [300, 500, 1000] },
+  { "id": "kesc",   "brand": "K-Electric","title": "KE Bill Credit", "note": "Utilities",     "save": "2%",       "denom": [500, 1000, 2000] },
+  { "id": "lesco",  "brand": "LESCO",     "title": "LESCO Credit",   "note": "Utilities",     "save": "2%",       "denom": [500, 1000, 2000] },
+  { "id": "ptcl",   "brand": "PTCL",      "title": "PTCL Bill",      "note": "Broadband",     "save": "2%",       "denom": [500, 1000, 2000] }
+]
