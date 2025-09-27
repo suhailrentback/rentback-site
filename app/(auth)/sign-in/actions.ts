@@ -1,38 +1,38 @@
+// app/(auth)/sign-in/actions.ts
 "use server";
 
 import { redirect } from "next/navigation";
-import { devLogin, Role, Lang, KycLevel, User } from "@/lib/session";
+import { devLogin } from "@/lib/session"; // same helper used before
 
-function parseKycLevel(x: unknown): KycLevel {
-  const n =
-    typeof x === "string" ? Number(x) :
-    typeof x === "number" ? x : 1;
-  if (n <= 0) return 0;
-  if (n === 1) return 1;
-  return 2;
-}
+type Role = "tenant" | "landlord" | "admin";
+type Lang = "en" | "ur";
 
+/**
+ * Signs in with just role + language.
+ * We start everyone at kycLevel = 0 so the app pages can prompt/guide KYC.
+ * Middleware (or in-page guards) will send users to /app/onboarding until KYC ≥ 1.
+ */
 export async function signInAndRedirect(formData: FormData) {
-  try {
-    const role = (formData.get("role") as Role) || "tenant";
-    const lang = (formData.get("lang") as Lang) || "en";
-    const kycLevel = parseKycLevel(formData.get("kycLevel"));
+  const role = (formData.get("role") as Role) || "tenant";
+  const lang = (formData.get("lang") as Lang) || "en";
+  const fullName = (formData.get("fullName") as string) || "Demo User";
 
-    const user: User = {
-      roles: [role],
-      activeRole: role,
-      kycLevel,
-      lang,
-    };
+  await devLogin({
+    roles: [role],
+    activeRole: role,
+    kycLevel: 0, // always start at 0 (no KYC)
+    lang,
+    fullName,
+  });
 
-    await devLogin(user);
+  // Let your middleware/guards handle KYC routing.
+  // Send them toward their dashboard; guard will bounce to /app/onboarding if needed.
+  const dest =
+    role === "tenant"
+      ? "/app/tenant"
+      : role === "landlord"
+      ? "/app/landlord"
+      : "/app/admin";
 
-    if (kycLevel < 1) return redirect("/app/onboarding");
-    if (role === "landlord") return redirect("/app/landlord");
-    if (role === "admin") return redirect("/app/admin");
-    return redirect("/app/tenant");
-  } catch (err) {
-    console.error("signInAndRedirect failed:", err);
-    return redirect("/sign-in?e=1");
-  }
+  redirect(dest);
 }
