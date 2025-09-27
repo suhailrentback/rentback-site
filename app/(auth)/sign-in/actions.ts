@@ -1,22 +1,32 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { setSession, type Role, type Lang, type User } from "@/lib/session";
+import { cookies } from "next/headers";
 
-export async function signInAndRedirect(formData: FormData) {
-  const role = (formData.get("role") as Role) || "tenant";
-  const lang = (formData.get("lang") as Lang) || "en";
-  const fullName = (formData.get("fullName") as string) || "Guest";
+/**
+ * Minimal sign-in action for the demo.
+ * - Reads the chosen role from the form
+ * - (Optionally) stores a display name in a non-critical cookie
+ * - Redirects to the matching dashboard route
+ *
+ * NOTE: This does NOT do real auth. Wire to your auth later.
+ */
+export async function signInAction(formData: FormData) {
+  const role = (formData.get("role") as "tenant" | "landlord" | "admin") || "tenant";
+  const fullName = String(formData.get("fullName") || "");
 
-  const user: User = {
-    id: "demo-user",
-    roles: [role],
-    activeRole: role,
-    kycLevel: 0, // start with 0; middleware will send them to onboarding
-    lang,
-    fullName,
-  };
+  // Optional: store display name for UI (non-HTTPOnly so client UI can read it if needed)
+  try {
+    cookies().set("rb_profile", JSON.stringify({ fullName }), {
+      path: "/",
+      sameSite: "lax",
+    });
+  } catch {
+    // ignore cookie errors in serverless environments
+  }
 
-  await setSession(user);
-  redirect(`/app/${role}`);
+  // Role-aware landing
+  if (role === "admin") redirect("/app/admin");
+  if (role === "landlord") redirect("/app/landlord");
+  redirect("/app/tenant");
 }
