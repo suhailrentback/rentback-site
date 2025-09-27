@@ -1,12 +1,14 @@
-// middleware.ts — SAFE NO-OP
+// middleware.ts
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-// Only run on /app/* if you later re-enable logic.
-// Right now this returns NextResponse.next() and never throws.
+// TEMP: no auth/kyc gating to unblock navigation
 export const config = {
-  matcher: ["/app/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|manifest.webmanifest|robots.txt|sitemap.xml).*)",
+  ],
 };
 
-export default function middleware() {
+export default function middleware(_req: NextRequest) {
   return NextResponse.next();
 }
