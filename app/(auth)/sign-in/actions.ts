@@ -1,4 +1,3 @@
-// app/(auth)/sign-in/actions.ts
 "use server";
 
 import { redirect } from "next/navigation";
@@ -6,22 +5,26 @@ import { devLogin } from "@/lib/session";
 
 type Role = "tenant" | "landlord" | "admin";
 type Lang = "en" | "ur";
+type KycLevel = 0 | 1 | 2;
+
+function parseKycLevel(input: unknown): KycLevel {
+  // Accept "0" | "1" | "2" or numbers; clamp to 0..2 and narrow to union
+  const n = typeof input === "string" ? Number(input) : typeof input === "number" ? input : 0;
+  if (n <= 0) return 0;
+  if (n === 1) return 1;
+  return 2;
+}
 
 export async function signInAndRedirect(formData: FormData) {
   try {
     const role = (formData.get("role") as Role) || "tenant";
-    const kycRaw = formData.get("kycLevel");
     const lang = (formData.get("lang") as Lang) || "en";
+    const safeKyc: KycLevel = parseKycLevel(formData.get("kycLevel"));
 
-    // Defensive parsing
-    const kycLevel = typeof kycRaw === "string" ? Number(kycRaw) : 0;
-    const safeKyc = Number.isFinite(kycLevel) ? kycLevel : 0;
-
-    // Minimal session bootstrap for demo
     await devLogin({
       roles: [role],
       activeRole: role,
-      kycLevel: safeKyc,
+      kycLevel: safeKyc, // now typed as 0|1|2
       lang,
     });
 
@@ -39,7 +42,6 @@ export async function signInAndRedirect(formData: FormData) {
     }
   } catch (err) {
     console.error("signInAndRedirect error:", err);
-    // Safe fallback so you never hit the opaque error page
     return redirect("/");
   }
 }
