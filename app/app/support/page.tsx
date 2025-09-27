@@ -1,113 +1,37 @@
-// app/app/support/page.tsx
 "use client";
 
-import BrandLogo from "@/components/BrandLogo";
+import React from "react";
+import Logo from "@/components/Logo";
+import { useLang } from "@/app/providers";
+import { getCopy } from "@/lib/i18n";
 
 export default function SupportPage() {
-  const download = (filename: string, content: string, mime = "text/plain") => {
-    const blob = new Blob([content], { type: mime + ";charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportPaymentsCSV = () => {
-    try {
-      const raw = localStorage.getItem("rb-demo-payments");
-      const arr = raw ? (JSON.parse(raw) as any[]) : [];
-      const headers = [
-        "ref",
-        "amount",
-        "landlord",
-        "method",
-        "status",
-        "ts",
-        "role"
-      ];
-      const rows = arr.map((p) => [
-        p.ref,
-        String(p.amount),
-        p.landlord,
-        p.method,
-        p.status,
-        new Date(p.ts).toISOString(),
-        p.role ?? ""
-      ]);
-      const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
-      download("rentback-payments.csv", csv, "text/csv");
-    } catch (e) {
-      alert("Could not read demo payments from this browser.");
-    }
-  };
-
-  const exportRedemptionsCSV = () => {
-    try {
-      const raw = localStorage.getItem("rb-demo-redemptions");
-      const arr = raw ? (JSON.parse(raw) as any[]) : [];
-      const headers = [
-        "ref",
-        "rewardId",
-        "brand",
-        "title",
-        "denomination",
-        "points",
-        "status",
-        "ts"
-      ];
-      const rows = arr.map((r) => [
-        r.ref,
-        r.rewardId,
-        r.brand,
-        r.title,
-        String(r.denomination),
-        String(r.points),
-        r.status,
-        new Date(r.ts).toISOString()
-      ]);
-      const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
-      download("rentback-redemptions.csv", csv, "text/csv");
-    } catch (e) {
-      alert("Could not read demo redemptions from this browser.");
-    }
-  };
+  const { lang, dir } = useLang();
+  const t = getCopy(lang);
 
   return (
-    <div className="p-3 max-w-xl mx-auto">
-      <div className="flex items-center gap-2 font-bold text-emerald-400 mb-3">
-        <BrandLogo />
-        Support
+    <div dir={dir} className="max-w-xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <Logo />
+        <span className="text-xs opacity-70">{lang === "en" ? "Support" : "مدد"}</span>
       </div>
 
-      <div className="rounded-2xl border bg-white/5 border-white/10 p-4">
-        <div className="font-semibold">Email support</div>
-        <div className="text-sm opacity-80">help@rentback.app</div>
-      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <h1 className="text-lg font-semibold mb-2">
+          {lang === "en" ? "How can we help?" : "ہم کیسے مدد کر سکتے ہیں؟"}
+        </h1>
+        <p className="text-sm opacity-80 mb-3">
+          {lang === "en"
+            ? "Email our support team and we’ll get back within 24 hours."
+            : "ہماری سپورٹ ٹیم کو ای میل کریں—عام طور پر 24 گھنٹوں میں جواب دیتے ہیں۔"}
+        </p>
 
-      <div className="h-3" />
-
-      <div className="rounded-2xl border bg-white/5 border-white/10 p-4">
-        <div className="font-semibold mb-2">Exports (demo CSV)</div>
-        <div className="text-sm opacity-80 mb-3">
-          These export the demo data stored in your browser (created via the
-          Pay/Rewards screens).
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={exportPaymentsCSV}
-            className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 font-semibold"
-          >
-            Download payments.csv
-          </button>
-          <button
-            onClick={exportRedemptionsCSV}
-            className="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5"
-          >
-            Download redemptions.csv
-          </button>
-        </div>
+        <a
+          href="mailto:help@rentback.app"
+          className="inline-block px-4 py-2 rounded-lg font-semibold border border-emerald-300/30 bg-emerald-600 text-white"
+        >
+          help@rentback.app
+        </a>
       </div>
     </div>
   );
