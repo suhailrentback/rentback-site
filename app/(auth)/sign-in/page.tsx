@@ -1,85 +1,62 @@
 // app/(auth)/sign-in/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { signInAndRedirect } from "./actions";
 import Logo from "@/components/Logo";
 
 export const dynamic = "force-static";
 
 export default function SignInPage() {
-  const [role, setRole] = useState<"tenant" | "landlord" | "admin">("tenant");
-  const [lang, setLang] = useState<"en" | "ur">("en");
-  const [kycLevel, setKycLevel] = useState<number>(0);
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white text-black dark:bg-[#0b0b0b] dark:text-white">
-      <div className="w-[92vw] max-w-md rounded-2xl border border-black/10 dark:border-white/10 p-6">
+    <main className="min-h-[80vh] flex items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-2xl border border-black/10 dark:border-white/10 p-6 bg-white dark:bg-[#0b0b0b]">
         <div className="flex items-center justify-center mb-4">
           <Logo label="RentBack" />
         </div>
-        <h1 className="text-xl font-semibold text-center mb-2">Sign in (Demo)</h1>
-        <p className="text-sm opacity-70 text-center mb-6">
-          Choose a role and KYC level to preview the app.
+
+        <h1 className="text-xl font-semibold mb-2">Sign in (Demo)</h1>
+        <p className="text-sm opacity-75 mb-6">
+          Choose a role and KYC level to preview the app flow.
         </p>
 
-        <form action={signInAndRedirect} className="space-y-4">
-          {/* Role */}
-          <div>
-            <label className="block text-sm mb-1">Role</label>
+        <form action={signInAndRedirect} className="grid gap-4">
+          <label className="grid gap-1 text-sm">
+            Role
             <select
               name="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as any)}
-              className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
+              defaultValue="tenant"
+              className="border rounded px-2 py-1 bg-transparent"
             >
-              <option value="tenant">Tenant</option>
-              <option value="landlord">Landlord</option>
-              <option value="admin">Admin</option>
+              <option value="tenant">tenant</option>
+              <option value="landlord">landlord</option>
+              <option value="admin">admin</option>
             </select>
-          </div>
+          </label>
 
-          {/* Language */}
-          <div>
-            <label className="block text-sm mb-1">Language</label>
-            <select
-              name="lang"
-              value={lang}
-              onChange={(e) => setLang(e.target.value as any)}
-              className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
-            >
-              <option value="en">English</option>
-              <option value="ur">اردو</option>
-            </select>
-          </div>
-
-          {/* KYC Level */}
-          <div>
-            <label className="block text-sm mb-1">KYC Level</label>
+          <label className="grid gap-1 text-sm">
+            KYC Level
             <select
               name="kycLevel"
-              value={kycLevel}
-              onChange={(e) => setKycLevel(Number(e.target.value))}
-              className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
+              defaultValue="1"
+              className="border rounded px-2 py-1 bg-transparent"
             >
-              <option value={0}>0 — Not completed (go to Onboarding)</option>
-              <option value={1}>1 — Basic KYC done</option>
-              <option value={2}>2 — Advanced KYC</option>
+              <option value="0">0 (needs onboarding)</option>
+              <option value="1">1 (basic complete)</option>
             </select>
-          </div>
+          </label>
+
+          {/* keep your default language */}
+          <input type="hidden" name="lang" value="en" />
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 font-medium"
+            className="mt-2 inline-flex items-center justify-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
           >
             Continue
           </button>
         </form>
-
-        <div className="text-[11px] opacity-60 mt-3 text-center">
-          Demo only — no real auth or payments.
-        </div>
       </div>
-    </div>
+    </main>
   );
 }
