@@ -1,22 +1,26 @@
 // app/app/tenant/page.tsx
-"use client";
-
 import React from "react";
+import { getUser } from "@/lib/session";
 import KycPrompt from "@/components/KycPrompt";
 
-export default function TenantDashboard() {
+export const dynamic = "force-dynamic";
+
+export default async function TenantDashboard() {
+  const user = await getUser(); // guaranteed by middleware
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Tenant Dashboard</h1>
+    <div className="max-w-xl mx-auto space-y-4">
+      <h1 className="text-xl font-semibold">Tenant Dashboard</h1>
 
-      {/* KYC Prompt */}
-      <KycPrompt lang="en" />
+      {user.kycLevel < 1 && <KycPrompt />}
 
-      <div className="rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-6">
-        <p className="opacity-80">
-          Welcome to your tenant dashboard. Here you will see your rent due,
-          payment history, and rewards summary.
-        </p>
+      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+        <div className="font-medium">Rent due</div>
+        <div className="text-sm opacity-80">No upcoming invoices</div>
+      </div>
+
+      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+        <div className="font-medium">Rewards</div>
+        <div className="text-sm opacity-80">0 points • redeem soon</div>
       </div>
     </div>
   );
