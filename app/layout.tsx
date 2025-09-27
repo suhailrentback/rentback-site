@@ -1,9 +1,10 @@
 // app/layout.tsx
+import "./globals.css"; // <-- this line makes Tailwind styles apply
 import React from "react";
 
 export const metadata = {
-  title: "RentBack",
-  description: "Pay rent. Earn rewards.",
+  title: "RentBack — Pay rent, earn rewards",
+  description: "Pakistan-focused rent payments with rewards.",
 };
 
 export default function RootLayout({
