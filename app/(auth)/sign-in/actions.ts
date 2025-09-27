@@ -1,25 +1,30 @@
-// app/(auth)/sign-in/actions.ts
 "use server";
 
 import { redirect } from "next/navigation";
-import { writeUser, type RBRole, type Lang } from "@/lib/session";
-import crypto from "node:crypto";
+import { setSession, type Role, type Lang, type User } from "@/lib/session";
 
-export async function signInAndRedirect(formData: FormData) {
-  const role = (formData.get("role") as RBRole) || "tenant";
-  const lang = (formData.get("lang") as Lang) || "en";
+export async function signIn(formData: FormData) {
+  const role = (formData.get("role") as Role) || "tenant";
+  const lang = ((formData.get("lang") as Lang) || "en");
+  // We removed KYC choice from sign-in. Start at 0 by default.
   const fullName = (formData.get("fullName") as string) || "Guest";
 
-  writeUser({
-    id: crypto.randomUUID(),
+  const user: User = {
+    id: "demo-user",
     roles: [role],
     activeRole: role,
-    kycLevel: 0, // always start at 0; KYC prompt happens inside tenant/landlord
+    kycLevel: 0, // always starts at 0
     lang,
     fullName,
-  });
+  };
 
-  if (role === "admin") redirect("/app/admin");
-  if (role === "landlord") redirect("/app/landlord");
-  redirect("/app/tenant");
+  await setSession(user);
+
+  // If KYC=0, middleware will bounce them into /app/onboarding automatically.
+  redirect(`/app/${role}`);
+}
+
+// Keep the old name to avoid import mismatches:
+export async function signInAndRedirect(formData: FormData) {
+  return signIn(formData);
 }
