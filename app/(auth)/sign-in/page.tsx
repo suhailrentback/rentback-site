@@ -12,10 +12,7 @@ export default function SignInPage() {
         <div className="flex items-center gap-2">
           <Logo label="RentBack" />
         </div>
-        <a
-          href="/"
-          className="text-sm opacity-80 hover:opacity-100"
-        >
+        <a href="/" className="text-sm opacity-80 hover:opacity-100">
           Back to home
         </a>
       </header>
@@ -71,7 +68,7 @@ export default function SignInPage() {
             </button>
 
             <p className="text-xs opacity-70">
-              You will be redirected to onboarding if KYC isn’t completed, or to your role’s
+              You’ll be redirected to onboarding if KYC isn’t completed, or to your role’s
               dashboard if it is.
             </p>
           </form>
