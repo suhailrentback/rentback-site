@@ -1,9 +1,9 @@
 // app/(auth)/sign-in/page.tsx
-export const dynamic = "force-static";
-
 import React from "react";
-import Logo from "@/components/Logo";
 import { signInAction } from "./actions";
+import Logo from "@/components/Logo";
+
+export const dynamic = "force-static";
 
 export default function SignInPage() {
   return (
@@ -14,36 +14,35 @@ export default function SignInPage() {
 
       <main className="max-w-md mx-auto px-4 py-10">
         <h1 className="text-2xl font-semibold mb-2">Sign in</h1>
-        <p className="text-sm opacity-75 mb-6">
-          Choose your role to enter the demo dashboards.
+        <p className="opacity-80 text-sm mb-6">
+          Pick your role to enter the app. KYC comes later.
         </p>
 
-        <form action={signInAction} className="space-y-4">
-          <div>
-            <label className="text-sm block mb-1">Full name (optional)</label>
-            <input
-              name="fullName"
-              className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
-              placeholder="e.g. Ali Khan"
-            />
-          </div>
+        <form action={signInAction} className="grid gap-4">
+          <fieldset className="rounded-xl border border-black/10 dark:border-white/10 p-4">
+            <legend className="text-sm opacity-80 px-1">Role</legend>
+            <div className="grid gap-2">
+              <label className="flex items-center gap-2">
+                <input type="radio" name="role" value="tenant" defaultChecked />
+                <span>Tenant</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="role" value="landlord" />
+                <span>Landlord</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="role" value="admin" />
+                <span>Admin</span>
+              </label>
+            </div>
+          </fieldset>
 
-          <div>
-            <label className="text-sm block mb-1">Role</label>
-            <select
-              name="role"
-              defaultValue="tenant"
-              className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
-            >
-              <option value="tenant">Tenant</option>
-              <option value="landlord">Landlord</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
+          {/* keep language simple for sign-in */}
+          <input type="hidden" name="lang" value="en" />
 
           <button
             type="submit"
-            className="w-full rounded-xl px-4 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
+            className="inline-flex items-center justify-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
           >
             Continue
           </button>
