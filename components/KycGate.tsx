@@ -1,73 +1,37 @@
-// components/KycGate.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import * as React from "react";
 
-function readCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return match ? decodeURIComponent(match[2]) : null;
+function hasKycCookie() {
+  if (typeof document === "undefined") return false;
+  return document.cookie.split(";").some((c) => c.trim().startsWith("rb-kyc=1"));
 }
 
-/** Polls rb_kyc cookie (demo) and re-renders when it flips to "1". */
+/**
+ * Wrap any money/privileged UI in <KycGate>.
+ * If KYC cookie is missing, shows the fallback.
+ */
 export default function KycGate({
   children,
-  className,
+  fallback,
 }: {
   children: React.ReactNode;
-  className?: string;
+  fallback?: React.ReactNode;
 }) {
-  const [kyc, setKyc] = useState<0 | 1>(0);
+  const [ready, setReady] = React.useState(false);
 
-  useEffect(() => {
-    // initial read
-    const value = Number(readCookie("rb_kyc") || "0");
-    setKyc(value === 1 ? 1 : 0);
-
-    // small poll to catch onboarding completion in another tab/window
-    const id = setInterval(() => {
-      const v = Number(readCookie("rb_kyc") || "0");
-      setKyc(v === 1 ? 1 : 0);
-    }, 1200);
-
-    return () => clearInterval(id);
+  React.useEffect(() => {
+    setReady(hasKycCookie());
   }, []);
 
-  if (kyc < 1) {
-    return (
-      <div
-        className={
-          className ??
-          "rounded-2xl border bg-white/5 border-white/10 p-4 text-sm"
-        }
-      >
+  if (!ready) return (
+    fallback ?? (
+      <div className="rounded-xl border border-amber-300/20 bg-amber-300/10 p-4">
         <div className="font-semibold mb-1">Complete KYC to continue</div>
-        <div className="opacity-80">
-          To use payments and rewards, please finish a quick KYC check.
-        </div>
-        <div className="mt-3 flex gap-2">
-          <Link
-            href="/app/onboarding"
-            className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 font-semibold"
-          >
-            Go to KYC
-          </Link>
-          <Link
-            href="/app"
-            className="px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5"
-          >
-            Back to app
-          </Link>
-        </div>
-        <div className="text-xs opacity-60 mt-3">
-          Demo note: We store a lightweight{" "}
-          <code className="px-1 rounded bg-black/30">rb_kyc</code> cookie that
-          flips to <code>1</code> after onboarding.
-        </div>
+        <a href="/app/app/onboarding" className="underline">Go to onboarding</a>
       </div>
-    );
-  }
+    )
+  );
 
   return <>{children}</>;
 }
