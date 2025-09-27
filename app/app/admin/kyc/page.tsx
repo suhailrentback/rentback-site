@@ -1,46 +1,98 @@
 // app/app/admin/kyc/page.tsx
 import React from "react";
-import AdminNav from "@/components/AdminNav";
+import { adminStore } from "@/lib/adminStore";
+import { approveKycAction, rejectKycAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminKycPage() {
-  const rows = [
-    { id: "KYC-3021", user: "Tenant D", type: "Tenant", status: "Pending" },
-    { id: "KYC-3019", user: "Landlord E", type: "Landlord", status: "Needs selfie" },
-    { id: "KYC-3015", user: "Tenant F", type: "Tenant", status: "Pending" },
-  ];
+export default async function AdminKycPage() {
+  const pending = adminStore.kyc.filter(k => k.status === "pending");
+  const processed = adminStore.kyc.filter(k => k.status !== "pending");
 
   return (
-    <div className="max-w-5xl mx-auto p-3">
-      <AdminNav />
-      <div className="rounded-xl border border-black/10 dark:border-white/10 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-black/[0.04] dark:bg-white/[0.06]">
-            <tr>
-              <th className="text-left p-3">Case</th>
-              <th className="text-left p-3">User</th>
-              <th className="text-left p-3">Type</th>
-              <th className="text-left p-3">Status</th>
-              <th className="text-right p-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t border-black/10 dark:border-white/10">
-                <td className="p-3">{r.id}</td>
-                <td className="p-3">{r.user}</td>
-                <td className="p-3">{r.type}</td>
-                <td className="p-3">{r.status}</td>
-                <td className="p-3 text-right">
-                  <button className="px-3 py-1 rounded-lg border border-black/10 dark:border-white/10 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">
-                    Review
+    <div className="max-w-4xl mx-auto py-6">
+      <h1 className="text-xl font-semibold mb-4">KYC Queue</h1>
+
+      {/* Pending */}
+      <div className="rounded-2xl border border-white/10 p-4 mb-6">
+        <div className="font-medium mb-3">Pending ({pending.length})</div>
+        <div className="space-y-3">
+          {pending.length === 0 && (
+            <div className="text-sm opacity-70">No pending applications.</div>
+          )}
+          {pending.map(app => (
+            <div
+              key={app.id}
+              className="rounded-xl border border-white/10 p-3 flex items-center justify-between gap-3"
+            >
+              <div>
+                <div className="font-medium">{app.fullName}</div>
+                <div className="text-xs opacity-70">
+                  {app.role} • submitted {new Date(app.submittedAt).toLocaleString()}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <form action={approveKycAction}>
+                  <input type="hidden" name="id" value={app.id} />
+                  <input
+                    type="hidden"
+                    name="notes"
+                    value="Verified basic checks"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm"
+                  >
+                    Approve
                   </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </form>
+
+                <form action={rejectKycAction} className="flex items-center gap-2">
+                  <input type="hidden" name="id" value={app.id} />
+                  <input
+                    type="text"
+                    name="reason"
+                    placeholder="Reason"
+                    className="px-2 py-1 text-sm rounded border border-white/10 bg-transparent"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm"
+                  >
+                    Reject
+                  </button>
+                </form>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Processed */}
+      <div className="rounded-2xl border border-white/10 p-4">
+        <div className="font-medium mb-3">Processed ({processed.length})</div>
+        <div className="space-y-3">
+          {processed.length === 0 && (
+            <div className="text-sm opacity-70">Nothing processed yet.</div>
+          )}
+          {processed.map(app => (
+            <div
+              key={app.id}
+              className="rounded-xl border border-white/10 p-3 flex items-center justify-between"
+            >
+              <div>
+                <div className="font-medium">{app.fullName}</div>
+                <div className="text-xs opacity-70">
+                  {app.role} • {app.status.toUpperCase()} • {app.notes || "—"}
+                </div>
+              </div>
+              <div className="text-xs opacity-60">
+                {new Date(app.submittedAt).toLocaleString()}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
