@@ -108,22 +108,22 @@ export default function LandingPage() {
   const [lang, setLang] = useState<Lang>("en");
   const [theme, setTheme] = useState<Theme>("light");
 
-  // hydrate from localStorage / media
   useEffect(() => {
     try {
       const savedLang = (localStorage.getItem("rb-lang") as Lang) || "en";
       setLang(savedLang);
     } catch {}
     try {
-      const savedTheme = (localStorage.getItem("rb-theme") as Theme) ||
-        (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+      const savedTheme =
+        (localStorage.getItem("rb-theme") as Theme) ||
+        (window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches
           ? "dark"
           : "light");
       setTheme(savedTheme);
     } catch {}
   }, []);
 
-  // apply html attributes & persist
   useEffect(() => {
     try {
       const root = document.documentElement;
@@ -150,20 +150,14 @@ export default function LandingPage() {
         <div className="flex items-center gap-2">
           <Logo label="RentBack" />
         </div>
-
         <nav className="hidden sm:flex items-center gap-4 text-sm opacity-80">
           <a href="#why" className="hover:opacity-100">{t.nav.why}</a>
           <a href="#how" className="hover:opacity-100">{t.nav.how}</a>
           <a href="#faq" className="hover:opacity-100">{t.nav.faq}</a>
-          <a
-            href="/sign-in"
-            className="inline-flex items-center rounded-lg px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
-          >
+          <a href="/sign-in" className="inline-flex items-center rounded-lg px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
             {t.nav.signin}
           </a>
         </nav>
-
-        {/* Toggles */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setLang((p) => (p === "en" ? "ur" : "en"))}
@@ -195,16 +189,10 @@ export default function LandingPage() {
                 {t.hero.p}
               </p>
               <div className="mt-8 flex gap-3">
-                <a
-                  href="/sign-in"
-                  className="inline-flex items-center justify-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
-                >
+                <a href="/sign-in" className="inline-flex items-center justify-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700">
                   {t.hero.ctaPrimary}
                 </a>
-                <a
-                  href="#why"
-                  className="inline-flex items-center justify-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-                >
+                <a href="#why" className="inline-flex items-center justify-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">
                   {t.hero.ctaSecondary}
                 </a>
               </div>
@@ -220,10 +208,7 @@ export default function LandingPage() {
                 <div className="mt-1 text-xs opacity-70">Exp 12/27 • RentBack</div>
                 <div className="mt-6 grid grid-cols-3 gap-3">
                   {t.hero.cardTags.map((text) => (
-                    <div
-                      key={text}
-                      className="rounded-xl border border-black/10 dark:border-white/10 p-3 text-center text-sm"
-                    >
+                    <div key={text} className="rounded-xl border border-black/10 dark:border-white/10 p-3 text-center text-sm">
                       {text}
                     </div>
                   ))}
@@ -240,10 +225,7 @@ export default function LandingPage() {
             <div className="relative rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-6 md:p-8">
               <div className="flex items-center justify-between gap-4 mb-6">
                 <h2 className="text-2xl md:text-3xl font-bold">{t.why.title}</h2>
-                <a
-                  href="/sign-in"
-                  className="hidden md:inline-flex items-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
-                >
+                <a href="/sign-in" className="hidden md:inline-flex items-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700">
                   {t.why.primary}
                 </a>
               </div>
@@ -256,16 +238,10 @@ export default function LandingPage() {
                 ))}
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
-                <a
-                  href="/sign-in"
-                  className="inline-flex items-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
-                >
+                <a href="/sign-in" className="inline-flex items-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700">
                   {t.why.primary}
                 </a>
-                <a
-                  href="#how"
-                  className="inline-flex items-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-                >
+                <a href="#how" className="inline-flex items-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">
                   {t.why.secondary}
                 </a>
               </div>
@@ -280,10 +256,7 @@ export default function LandingPage() {
             <div className="relative rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-6 md:p-8">
               <div className="flex items-center justify-between gap-4 mb-6">
                 <h2 className="text-2xl md:text-3xl font-bold">{t.how.title}</h2>
-                <a
-                  href="/sign-in"
-                  className="hidden md:inline-flex items-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
-                >
+                <a href="/sign-in" className="hidden md:inline-flex items-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700">
                   {t.nav.signin}
                 </a>
               </div>
@@ -299,16 +272,10 @@ export default function LandingPage() {
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <a
-                  href="/sign-in"
-                  className="inline-flex items-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
-                >
+                <a href="/sign-in" className="inline-flex items-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700">
                   {t.how.primary}
                 </a>
-                <a
-                  href="#faq"
-                  className="inline-flex items-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-                >
+                <a href="#faq" className="inline-flex items-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">
                   {t.how.secondary}
                 </a>
               </div>
@@ -323,10 +290,7 @@ export default function LandingPage() {
             <div className="relative rounded-3xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-6 md:p-8">
               <div className="flex items-center justify-between gap-4 mb-6">
                 <h2 className="text-2xl md:text-3xl font-bold">{t.faq.title}</h2>
-                <a
-                  href="/sign-in"
-                  className="hidden md:inline-flex items-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
-                >
+                <a href="/sign-in" className="hidden md:inline-flex items-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700">
                   {t.nav.signin}
                 </a>
               </div>
@@ -341,16 +305,10 @@ export default function LandingPage() {
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">
-                <a
-                  href="/sign-in"
-                  className="inline-flex items-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700"
-                >
+                <a href="/sign-in" className="inline-flex items-center rounded-xl px-5 py-3 bg-emerald-600 text-white hover:bg-emerald-700">
                   {t.faq.primary}
                 </a>
-                <a
-                  href="mailto:help@rentback.app"
-                  className="inline-flex items-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-                >
+                <a href="mailto:help@rentback.app" className="inline-flex items-center rounded-xl px-5 py-3 border border-black/10 dark:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">
                   {t.faq.secondary}
                 </a>
               </div>
