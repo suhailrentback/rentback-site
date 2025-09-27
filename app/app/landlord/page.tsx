@@ -1,26 +1,36 @@
-// app/app/landlord/page.tsx
+"use client";
+
 import React from "react";
-import { getUser } from "@/lib/session";
-import KycPrompt from "@/components/KycPrompt";
+import Logo from "@/components/Logo";
 
-export const dynamic = "force-dynamic";
-
-export default async function LandlordDashboard() {
-  const user = await getUser(); // guaranteed by middleware
+export default function LandlordOverviewPage() {
   return (
-    <div className="max-w-xl mx-auto space-y-4">
-      <h1 className="text-xl font-semibold">Landlord Dashboard</h1>
-
-      {user.kycLevel < 1 && <KycPrompt />}
-
-      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-        <div className="font-medium">Incoming payments</div>
-        <div className="text-sm opacity-80">No payments yet</div>
+    <div className="max-w-2xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold">Landlord • Overview</h1>
+        <Logo />
       </div>
 
-      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-        <div className="font-medium">Tenants overview</div>
-        <div className="text-sm opacity-80">No tenants onboarded</div>
+      <div className="grid gap-4">
+        <a href="/app/landlord/properties" className="rounded-xl border border-white/10 bg-white/5 p-4 block hover:bg-white/10">
+          <div className="font-semibold">Properties</div>
+          <div className="text-sm opacity-75">Add, edit, and manage your properties.</div>
+        </a>
+
+        <a href="/app/landlord/tenants" className="rounded-xl border border-white/10 bg-white/5 p-4 block hover:bg-white/10">
+          <div className="font-semibold">Tenants</div>
+          <div className="text-sm opacity-75">View tenant list and rent status.</div>
+        </a>
+
+        <a href="/app/landlord/payments" className="rounded-xl border border-white/10 bg-white/5 p-4 block hover:bg-white/10">
+          <div className="font-semibold">Payments</div>
+          <div className="text-sm opacity-75">Incoming payments and receipts.</div>
+        </a>
+
+        <a href="/app/landlord/payouts" className="rounded-xl border border-white/10 bg-white/5 p-4 block hover:bg-white/10">
+          <div className="font-semibold">Payouts</div>
+          <div className="text-sm opacity-75">Withdraw funds to your bank account.</div>
+        </a>
       </div>
     </div>
   );
