@@ -1,79 +1,85 @@
 // app/(auth)/sign-in/page.tsx
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import { signInAndRedirect } from "./actions";
 import Logo from "@/components/Logo";
 
-export const dynamic = "force-static"; // sign-in can be static
+export const dynamic = "force-static";
 
 export default function SignInPage() {
+  const [role, setRole] = useState<"tenant" | "landlord" | "admin">("tenant");
+  const [lang, setLang] = useState<"en" | "ur">("en");
+  const [kycLevel, setKycLevel] = useState<number>(0);
+
   return (
-    <div className="min-h-screen bg-white text-black dark:bg-[#0b0b0b] dark:text-white">
-      <header className="h-14 flex items-center justify-between px-4 border-b border-black/10 dark:border-white/10">
-        <div className="flex items-center gap-2">
+    <div className="min-h-screen flex items-center justify-center bg-white text-black dark:bg-[#0b0b0b] dark:text-white">
+      <div className="w-[92vw] max-w-md rounded-2xl border border-black/10 dark:border-white/10 p-6">
+        <div className="flex items-center justify-center mb-4">
           <Logo label="RentBack" />
         </div>
-        <a href="/" className="text-sm opacity-80 hover:opacity-100">
-          Back to home
-        </a>
-      </header>
+        <h1 className="text-xl font-semibold text-center mb-2">Sign in (Demo)</h1>
+        <p className="text-sm opacity-70 text-center mb-6">
+          Choose a role and KYC level to preview the app.
+        </p>
 
-      <main className="max-w-md mx-auto px-4 py-10">
-        <div className="rounded-2xl border border-black/10 dark:border-white/10 p-6">
-          <h1 className="text-xl font-semibold">Sign in</h1>
-          <p className="text-sm opacity-80 mt-1">
-            Demo login for development. No real authentication yet.
-          </p>
-
-          <form action={signInAndRedirect} className="mt-6 space-y-5">
-            {/* Role */}
-            <div>
-              <label className="text-sm font-medium">Choose your role</label>
-              <select
-                name="role"
-                className="mt-2 w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
-                defaultValue="tenant"
-              >
-                <option value="tenant">Tenant</option>
-                <option value="landlord">Landlord</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-
-            {/* Language */}
-            <div>
-              <label className="text-sm font-medium">Language</label>
-              <select
-                name="lang"
-                className="mt-2 w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
-                defaultValue="en"
-              >
-                <option value="en">English</option>
-                <option value="ur">اردو</option>
-              </select>
-            </div>
-
-            {/* KYC */}
-            <div className="flex items-center gap-2">
-              <input id="kycDone" name="kycDone" type="checkbox" className="size-4" />
-              <label htmlFor="kycDone" className="text-sm">
-                I have completed basic KYC (skip onboarding)
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
+        <form action={signInAndRedirect} className="space-y-4">
+          {/* Role */}
+          <div>
+            <label className="block text-sm mb-1">Role</label>
+            <select
+              name="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as any)}
+              className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
             >
-              Continue
-            </button>
+              <option value="tenant">Tenant</option>
+              <option value="landlord">Landlord</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
 
-            <p className="text-xs opacity-70">
-              You’ll be redirected to onboarding if KYC isn’t completed, or to your role’s
-              dashboard if it is.
-            </p>
-          </form>
+          {/* Language */}
+          <div>
+            <label className="block text-sm mb-1">Language</label>
+            <select
+              name="lang"
+              value={lang}
+              onChange={(e) => setLang(e.target.value as any)}
+              className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
+            >
+              <option value="en">English</option>
+              <option value="ur">اردو</option>
+            </select>
+          </div>
+
+          {/* KYC Level */}
+          <div>
+            <label className="block text-sm mb-1">KYC Level</label>
+            <select
+              name="kycLevel"
+              value={kycLevel}
+              onChange={(e) => setKycLevel(Number(e.target.value))}
+              className="w-full rounded-lg border border-black/10 dark:border-white/10 bg-transparent px-3 py-2"
+            >
+              <option value={0}>0 — Not completed (go to Onboarding)</option>
+              <option value={1}>1 — Basic KYC done</option>
+              <option value={2}>2 — Advanced KYC</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 font-medium"
+          >
+            Continue
+          </button>
+        </form>
+
+        <div className="text-[11px] opacity-60 mt-3 text-center">
+          Demo only — no real auth or payments.
         </div>
-      </main>
+      </div>
     </div>
   );
 }
