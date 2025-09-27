@@ -1,4 +1,6 @@
 // lib/session.ts
+"use server";
+
 import { cookies } from "next/headers";
 
 export type Role = "tenant" | "landlord" | "admin";
@@ -12,28 +14,44 @@ export type User = {
   lang: Lang;
 };
 
-// ---- server helpers (used by pages/actions) ----
-export async function getUser(): Promise<User | null> {
+const COOKIE_NAME = "rb_session";
+
+function encode(v: unknown) {
+  return Buffer.from(JSON.stringify(v)).toString("base64url");
+}
+function decode<T>(raw: string): T | null {
   try {
-    const raw = cookies().get("rb_user")?.value;
-    if (!raw) return null;
-    const u = JSON.parse(raw) as User;
-    return u ?? null;
+    return JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as T;
   } catch {
     return null;
   }
 }
 
+/** Read current user session from the signed cookie (unsiged here for demo). */
+export async function getUser(): Promise<User | null> {
+  const c = cookies().get(COOKIE_NAME)?.value;
+  if (!c) return null;
+  const parsed = decode<User>(c);
+  if (!parsed) return null;
+  // very light validation
+  if (!parsed.activeRole || !parsed.roles?.length) return null;
+  return parsed;
+}
+
+/** Dev/demo login: write a cookie the middleware & server can read. */
 export async function devLogin(u: User): Promise<void> {
-  // Non-HTTPOnly so middleware (edge) can read it easily; fine for demo.
-  cookies().set("rb_user", JSON.stringify(u), {
-    path: "/",
+  const value = encode(u);
+  cookies().set({
+    name: COOKIE_NAME,
+    value,
+    httpOnly: true,
     sameSite: "lax",
-    secure: true,
-    // no httpOnly on purpose (edge middleware can't read server httpOnly cookies)
+    path: "/",
+    // maxAge: 60 * 60 * 24 * 30, // 30 days (optional)
   });
 }
 
-export async function devLogout(): Promise<void> {
-  cookies().delete("rb_user");
+/** Clear the session. */
+export async function logout(): Promise<void> {
+  cookies().delete(COOKIE_NAME);
 }
