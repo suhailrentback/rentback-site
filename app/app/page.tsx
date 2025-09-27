@@ -12,7 +12,7 @@ export default function AppHomePage() {
         <span className="text-xs opacity-70">Dashboard</span>
       </div>
 
-      {/* Always visible section */}
+      {/* Always-visible card */}
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 mb-4">
         <h1 className="text-lg font-semibold mb-2">Welcome to RentBack</h1>
         <p className="text-sm opacity-80">
@@ -36,12 +36,12 @@ export default function AppHomePage() {
             className="rounded-xl border border-white/10 bg-white/5 p-4 block hover:bg-white/10"
           >
             <div className="font-semibold">Rewards</div>
-            <div className="text-sm opacity-75">Redeem perks on Pakistani brands</div>
+            <div className="text-sm opacity-75">
+              Redeem perks on Pakistani brands
+            </div>
           </a>
         </div>
       </KycGate>
-
-      {/* If KYC not ready, KycGate will render its own CTA */}
     </div>
   );
 }
