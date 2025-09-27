@@ -13,21 +13,20 @@ export type User = {
   fullName?: string;
 };
 
-const COOKIE = "rb_user";
+const KEY = "rb_user";
 
-export function getUser(): User | null {
+export function readUser(): User | null {
   try {
-    const c = cookies().get(COOKIE)?.value;
-    if (!c) return null;
-    const parsed = JSON.parse(c);
-    // minimal shape guard with sane defaults
+    const v = cookies().get(KEY)?.value;
+    if (!v) return null;
+    const p = JSON.parse(v);
     const user: User = {
-      id: parsed.id || "dev",
-      roles: (parsed.roles as RBRole[]) || ["tenant"],
-      activeRole: (parsed.activeRole as RBRole) || "tenant",
-      kycLevel: (parsed.kycLevel as 0 | 1 | 2) ?? 0,
-      lang: (parsed.lang as Lang) || "en",
-      fullName: parsed.fullName,
+      id: p.id || "dev",
+      roles: (p.roles as RBRole[]) || ["tenant"],
+      activeRole: (p.activeRole as RBRole) || "tenant",
+      kycLevel: (p.kycLevel as 0 | 1 | 2) ?? 0,
+      lang: (p.lang as Lang) || "en",
+      fullName: p.fullName,
     };
     return user;
   } catch {
@@ -35,10 +34,9 @@ export function getUser(): User | null {
   }
 }
 
-export function setUser(u: User) {
-  const value = JSON.stringify(u);
-  cookies().set(COOKIE, value, {
-    httpOnly: false, // TEMP for demo; switch to true when using real auth
+export function writeUser(u: User) {
+  cookies().set(KEY, JSON.stringify(u), {
+    httpOnly: false, // demo only; flip to true with real auth
     sameSite: "lax",
     secure: true,
     path: "/",
@@ -47,5 +45,5 @@ export function setUser(u: User) {
 }
 
 export function clearUser() {
-  cookies().delete(COOKIE);
+  cookies().delete(KEY);
 }
