@@ -1,46 +1,36 @@
-// app/app/admin/payments/page.tsx
+"use client";
+
 import React from "react";
-import { adminStore } from "@/lib/adminStore";
-import PaymentViewer from "../PaymentViewer";
+import { viewPaymentAction } from "../actions";
 
-export const dynamic = "force-dynamic";
+// Demo data
+const demoPayments = [
+  { id: "p_1001", tenant: "Ayesha Khan", amount: "PKR 85,000", status: "Pending" },
+  { id: "p_1002", tenant: "Zain Ahmed", amount: "PKR 90,000", status: "Succeeded" },
+];
 
-export default async function AdminPaymentsPage() {
-  const payments = adminStore.payments;
-
+export default function AdminPaymentsPage() {
   return (
-    <div className="max-w-5xl mx-auto py-6">
+    <div className="max-w-2xl mx-auto">
       <h1 className="text-xl font-semibold mb-4">Payments</h1>
 
-      <div className="rounded-2xl border border-white/10 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-white/5">
-            <tr className="text-left">
-              <th className="px-3 py-2">Reference</th>
-              <th className="px-3 py-2">Tenant</th>
-              <th className="px-3 py-2">Amount</th>
-              <th className="px-3 py-2">Method</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Date</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {payments.map((p) => (
-              <tr key={p.id} className="border-t border-white/10">
-                <td className="px-3 py-2 font-mono">{p.reference}</td>
-                <td className="px-3 py-2">{p.tenantName}</td>
-                <td className="px-3 py-2">PKR {p.amount.toLocaleString()}</td>
-                <td className="px-3 py-2">{p.method}</td>
-                <td className="px-3 py-2 uppercase">{p.status}</td>
-                <td className="px-3 py-2">{new Date(p.date).toLocaleString()}</td>
-                <td className="px-3 py-2">
-                  <PaymentViewer paymentId={p.id} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="grid gap-3">
+        {demoPayments.map((p) => (
+          <div key={p.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">{p.tenant}</div>
+                <div className="text-xs opacity-70">{p.amount} • {p.status}</div>
+              </div>
+              <form action={viewPaymentAction}>
+                <input type="hidden" name="paymentId" value={p.id} />
+                <button className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/10 text-sm">
+                  View
+                </button>
+              </form>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
