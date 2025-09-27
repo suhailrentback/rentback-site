@@ -1,32 +1,18 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import { AppProviders } from "./providers";
-import LangToggle from "@/components/LangToggle";
-import ThemeToggle from "@/components/ThemeToggle";
+// app/layout.tsx
+import React from "react";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "RentBack",
-  description: "Pay rent, earn rewards — Pakistan-first fintech.",
+  description: "Pay rent. Earn rewards.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // NOTE: language + theme are set on <html> by AppProviders (client).
+export default function RootLayout({
+  children,
+}: { children: React.ReactNode }) {
   return (
-    <html>
-      <body className="min-h-screen bg-[#0b0b0b] text-white transition-colors">
-        <AppProviders>
-          <header className="sticky top-0 z-[40] h-14 flex items-center justify-between px-3 bg-[#0b0b0bcc] backdrop-saturate-150 backdrop-blur border-b border-white/10">
-            <div className="flex items-center gap-2 font-bold text-emerald-400">
-              {/* Replace with your SVG logo component later if desired */}
-              <span aria-hidden>🏠</span> RentBack
-            </div>
-            <div className="flex items-center gap-2">
-              <LangToggle />
-              <ThemeToggle />
-            </div>
-          </header>
-          <main className="p-3 max-w-3xl mx-auto">{children}</main>
-        </AppProviders>
+    <html lang="en" dir="ltr" suppressHydrationWarning>
+      <body className="min-h-screen bg-white text-black dark:bg-[#0b0b0b] dark:text-white">
+        {children}
       </body>
     </html>
   );
