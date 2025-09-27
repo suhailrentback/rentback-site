@@ -1,42 +1,45 @@
 // app/(auth)/sign-in/actions.ts
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { devLogin } from "@/lib/session";
 
-type Role = "tenant" | "landlord" | "admin";
-type Lang = "en" | "ur";
-
-// Where each role lands post-login
-function homeForRole(role: Role): string {
-  switch (role) {
-    case "admin":
-      return "/app/admin";
-    case "landlord":
-      return "/app/landlord";
-    default:
-      return "/app/tenant";
-  }
-}
-
+/**
+ * Dev-only sign-in that seeds a session cookie and routes the user
+ * straight to the correct dashboard based on activeRole + KYC level.
+ */
 export async function signInAndRedirect(formData: FormData) {
-  const role = (formData.get("role") as Role) || "tenant";
-  const lang = (formData.get("lang") as Lang) || "en";
-  const kycDone = formData.get("kycDone") === "on";
+  const role = (formData.get("role") as "tenant" | "landlord" | "admin") || "tenant";
+  const lang = (formData.get("lang") as "en" | "ur") || "en";
+  const kycLevel = Number(formData.get("kycLevel") || 0);
 
-  // Create the session for this user
-  await devLogin({
-    roles: [role],
+  // Give sensible role set based on chosen role
+  const roles: Array<"tenant" | "landlord" | "admin"> =
+    role === "admin" ? ["tenant", "landlord", "admin"] : [role];
+
+  const user = {
+    id: "demo-user",
+    fullName: "Demo User",
+    roles,
     activeRole: role,
-    kycLevel: kycDone ? 1 : 0,
+    kycLevel, // 0 → onboarding, 1+ → full access
     lang,
+  };
+
+  // Store session (client-readable for demo)
+  cookies().set("rb_user", JSON.stringify(user), {
+    path: "/",
+    httpOnly: false,
+    sameSite: "lax",
   });
 
-  // If KYC isn’t done, send them to onboarding
-  if (!kycDone) {
+  // If KYC not complete, force onboarding first
+  if (kycLevel < 1) {
     redirect("/app/onboarding");
   }
 
-  // Otherwise, go to the role’s home
-  redirect(homeForRole(role));
+  // Otherwise land in the correct dashboard
+  if (role === "tenant") redirect("/app/tenant");
+  if (role === "landlord") redirect("/app/landlord");
+  redirect("/app/admin");
 }
