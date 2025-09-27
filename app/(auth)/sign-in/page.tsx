@@ -1,4 +1,3 @@
-// app/(auth)/sign-in/page.tsx
 "use client";
 
 import React from "react";
@@ -9,54 +8,44 @@ export const dynamic = "force-static";
 
 export default function SignInPage() {
   return (
-    <main className="min-h-[80vh] flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl border border-black/10 dark:border-white/10 p-6 bg-white dark:bg-[#0b0b0b]">
-        <div className="flex items-center justify-center mb-4">
+    <div className="min-h-screen bg-white text-black dark:bg-[#0b0b0b] dark:text-white">
+      <header className="h-14 flex items-center justify-between px-4 border-b border-black/10 dark:border-white/10">
+        <div className="flex items-center gap-2">
           <Logo label="RentBack" />
         </div>
+        <a href="/" className="text-sm opacity-80 hover:opacity-100">Back to site</a>
+      </header>
 
-        <h1 className="text-xl font-semibold mb-2">Sign in (Demo)</h1>
-        <p className="text-sm opacity-75 mb-6">
-          Choose a role and KYC level to preview the app flow.
-        </p>
+      <main className="max-w-md mx-auto px-4 py-12">
+        <h1 className="text-2xl font-semibold mb-2">Sign in (Demo)</h1>
+        <p className="text-sm opacity-75 mb-6">Creates a demo session. No real auth yet.</p>
 
-        <form action={signInAndRedirect} className="grid gap-4">
-          <label className="grid gap-1 text-sm">
-            Role
-            <select
-              name="role"
-              defaultValue="tenant"
-              className="border rounded px-2 py-1 bg-transparent"
-            >
+        <form action={signInAndRedirect} className="grid gap-4 rounded-2xl border border-black/10 dark:border-white/10 p-4">
+          <label className="grid gap-1">
+            <span className="text-sm">Role</span>
+            <select name="role" className="bg-transparent border border-black/10 dark:border-white/10 rounded px-2 py-2" defaultValue="tenant">
               <option value="tenant">tenant</option>
               <option value="landlord">landlord</option>
               <option value="admin">admin</option>
             </select>
           </label>
 
-          <label className="grid gap-1 text-sm">
-            KYC Level
-            <select
-              name="kycLevel"
-              defaultValue="1"
-              className="border rounded px-2 py-1 bg-transparent"
-            >
+          <label className="grid gap-1">
+            <span className="text-sm">KYC Level</span>
+            <select name="kycLevel" className="bg-transparent border border-black/10 dark:border-white/10 rounded px-2 py-2" defaultValue="1">
               <option value="0">0 (needs onboarding)</option>
-              <option value="1">1 (basic complete)</option>
+              <option value="1">1 (basic)</option>
+              <option value="2">2 (full)</option>
             </select>
           </label>
 
-          {/* keep your default language */}
           <input type="hidden" name="lang" value="en" />
 
-          <button
-            type="submit"
-            className="mt-2 inline-flex items-center justify-center rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700"
-          >
+          <button type="submit" className="rounded-xl px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700">
             Continue
           </button>
         </form>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
