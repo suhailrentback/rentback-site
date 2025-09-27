@@ -2,27 +2,24 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { setUser, type RBRole, type Lang } from "@/lib/session";
+import { writeUser, type RBRole, type Lang } from "@/lib/session";
 import crypto from "node:crypto";
 
 export async function signInAndRedirect(formData: FormData) {
   const role = (formData.get("role") as RBRole) || "tenant";
+  const lang = (formData.get("lang") as Lang) || "en";
   const fullName = (formData.get("fullName") as string) || "Guest";
-  const lang = ((formData.get("lang") as Lang) || "en");
-  // always start at KYC 0; we’ll prompt in tenant/landlord pages
-  const user = {
+
+  writeUser({
     id: crypto.randomUUID(),
-    roles: [role] as RBRole[],
+    roles: [role],
     activeRole: role,
-    kycLevel: 0 as 0,
+    kycLevel: 0, // always start at 0; KYC prompt happens inside tenant/landlord
     lang,
     fullName,
-  };
+  });
 
-  setUser(user);
-
-  // role-aware landing
-  if (role === "admin") return redirect("/app/admin");
-  if (role === "landlord") return redirect("/app/landlord");
-  return redirect("/app/tenant");
+  if (role === "admin") redirect("/app/admin");
+  if (role === "landlord") redirect("/app/landlord");
+  redirect("/app/tenant");
 }
