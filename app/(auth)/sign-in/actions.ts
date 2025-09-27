@@ -1,29 +1,31 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-/**
- * Minimal sign-in action for the demo.
- * - Reads the chosen role from the form
- * - (Optionally) stores a display name in a non-critical cookie
- * - Redirects to the matching dashboard route
- *
- * NOTE: This does NOT do real auth. Wire to your auth later.
- */
+type Role = "tenant" | "landlord" | "admin";
+
 export async function signInAction(formData: FormData) {
-  const role = (formData.get("role") as "tenant" | "landlord" | "admin") || "tenant";
-  const fullName = String(formData.get("fullName") || "");
+  const role = (formData.get("role") as Role) || "tenant";
+  const fullName = (formData.get("fullName") as string) || "Guest";
 
-  // Optional: store display name for UI (non-HTTPOnly so client UI can read it if needed)
-  try {
-    cookies().set("rb_profile", JSON.stringify({ fullName }), {
-      path: "/",
-      sameSite: "lax",
-    });
-  } catch {
-    // ignore cookie errors in serverless environments
-  }
+  // Write a simple demo session the rest of the app can read.
+  // If your app already has getUser() reading `rb_session`, this will plug right in.
+  const session = {
+    id: "demo-" + Math.random().toString(36).slice(2),
+    roles: [role],
+    activeRole: role,
+    kycLevel: 0 as 0 | 1 | 2, // start without KYC
+    lang: "en" as "en" | "ur",
+    name: fullName,
+  };
+
+  // HTTPOnly so only server reads it; pages use getUser()
+  cookies().set("rb_session", JSON.stringify(session), {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+  });
 
   // Role-aware landing
   if (role === "admin") redirect("/app/admin");
