@@ -52,7 +52,9 @@ export default async function AdminKycQueue() {
               className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0b0b0b] p-4 flex items-center justify-between"
             >
               <div className="min-w-0">
-                <div className="font-medium">{t.applicant}: {row.name}</div>
+                <div className="font-medium">
+                  {t.applicant}: {row.name}
+                </div>
                 <div className="text-xs opacity-70">
                   {t.role}: {row.role} • {t.docs}: {row.doc}
                 </div>
@@ -68,6 +70,7 @@ export default async function AdminKycQueue() {
                     {t.approve}
                   </button>
                 </form>
+
                 <form action={rejectKyc}>
                   <input type="hidden" name="id" value={row.id} />
                   <button
