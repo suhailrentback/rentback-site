@@ -1,26 +1,30 @@
-// app/app/tenant/page.tsx
+"use client";
+
 import React from "react";
-import { getUser } from "@/lib/session";
+import Logo from "@/components/Logo";
 import KycPrompt from "@/components/KycPrompt";
 
-export const dynamic = "force-dynamic";
-
-export default async function TenantDashboard() {
-  const user = await getUser(); // guaranteed by middleware
+export default function TenantOverviewPage() {
   return (
-    <div className="max-w-xl mx-auto space-y-4">
-      <h1 className="text-xl font-semibold">Tenant Dashboard</h1>
-
-      {user.kycLevel < 1 && <KycPrompt />}
-
-      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-        <div className="font-medium">Rent due</div>
-        <div className="text-sm opacity-80">No upcoming invoices</div>
+    <div className="max-w-2xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold">Tenant • Overview</h1>
+        <Logo />
       </div>
 
-      <div className="rounded-xl border border-black/10 dark:border-white/10 p-4">
-        <div className="font-medium">Rewards</div>
-        <div className="text-sm opacity-80">0 points • redeem soon</div>
+      {/* KYC reminder */}
+      <KycPrompt />
+
+      <div className="grid gap-4 mt-4">
+        <a href="/app/pay" className="rounded-xl border border-white/10 bg-white/5 p-4 block hover:bg-white/10">
+          <div className="font-semibold">Rent Due</div>
+          <div className="text-sm opacity-75">Pay via bank transfer, card, or wallet.</div>
+        </a>
+
+        <a href="/app/rewards" className="rounded-xl border border-white/10 bg-white/5 p-4 block hover:bg-white/10">
+          <div className="font-semibold">Rewards Summary</div>
+          <div className="text-sm opacity-75">Track points and redeem perks on Pakistani brands.</div>
+        </a>
       </div>
     </div>
   );
